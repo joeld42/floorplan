@@ -106,6 +106,7 @@ fn setup_system(
 
         ..Default::default()
      });
+
     commands.spawn(VelloSceneBundle::default());
 
     // Spawn 3D scene
@@ -205,3 +206,4 @@ fn vello_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>, ti
     transform.translation = Vec3::lerp(Vec3::X * -100.0, Vec3::X * 100.0, sin_time);
     transform.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * sin_time);
 }
+
