@@ -1,6 +1,6 @@
 
 use bevy::{prelude::* };
-use constraints::{ add, add_vec2, ConstraintSystem };
+use constraints::{ ConstraintSystem };
 
 #[derive(Copy,Clone)]
 pub enum WallStyle

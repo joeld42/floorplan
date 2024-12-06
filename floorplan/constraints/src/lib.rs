@@ -68,6 +68,25 @@ impl ConstraintSystem
 
     }
 
+    pub fn add_constraint_angle( &mut self, a : usize, b : usize, c : usize, target_ang : Option<f32> )
+    {
+        let target_ang = match target_ang {
+            Some( len ) => len,
+            None => {
+                let ba = (self.anchors[a].p - self.anchors[b].p).normalize();
+                let bc = (self.anchors[c].p - self.anchors[b].p).normalize();
+                let dot = ba.dot( bc );
+
+                // angle between BC and BC
+                dot.acos()
+            }
+        };
+
+        println!("Target angle {}", target_ang.to_degrees() );
+
+        self.constraints.push( Constraint::Angle( AngleConstraint { anc_a : a, anc_b : b, anc_c : c, target_angle : target_ang }));
+    }
+
     pub fn eval_system( &mut self ) {
         let steps = 100;
         let base_str = 5.0;
@@ -86,8 +105,8 @@ impl ConstraintSystem
                     Constraint::FixedLength( fixed_len ) => {
 
                         // note: could use split_at_mut here to get two slices of self.anchors but
-                        // I like this better. Might be faster to just pass and return copies instead
-                        // of referencing at all, todo investigate afterward
+                        // I like this better. Might be faster to just pass and return copies or just the points
+                        // instead of referencing at all the anchors, todo investigate afterward
                         let mut anc_a = self.anchors[ fixed_len.anc_a ];
                         let mut anc_b = self.anchors[ fixed_len.anc_b ];
                         fixed_len.eval( &mut anc_a, &mut anc_b, str  );
@@ -106,6 +125,17 @@ impl ConstraintSystem
                         self.anchors[parallel.anc_b].p = anc_b.p;
                         self.anchors[parallel.anc_c].p = anc_c.p;
                         self.anchors[parallel.anc_d].p = anc_d.p;
+                    }
+
+                    Constraint::Angle( angle) => {
+                        let mut anc_a = self.anchors[ angle.anc_a ];
+                        let mut anc_b = self.anchors[ angle.anc_b ];
+                        let mut anc_c = self.anchors[ angle.anc_c ];
+                        angle.eval( &mut anc_a, &mut anc_b, &mut anc_c, str );
+                        self.anchors[angle.anc_a].p = anc_a.p;
+                        self.anchors[angle.anc_b].p = anc_b.p;
+                        self.anchors[angle.anc_c].p = anc_c.p;
+
                     }
                 }
             }
@@ -189,17 +219,49 @@ impl ParallelConstraint {
     }
 }
 
+// ====== [ Angle Constraint ]==============================
+// Constrains the angle ABC to be a target angle
+struct AngleConstraint {
+    anc_a : usize,
+    anc_b : usize,
+    anc_c : usize,
+    target_angle : f32, // in radians
+}
+
+impl AngleConstraint {
+
+    fn eval( self : &Self,
+        anc_a : &mut AnchorPoint,
+        anc_b : &mut AnchorPoint,
+        anc_c : &mut AnchorPoint,
+         str : f32  ) {
+
+
+            let ba = (anc_a.p - anc_b.p).normalize();
+            let bc = (anc_c.p - anc_b.p).normalize();
+
+            let dot = ba.dot( bc );
+            let ang_curr = dot.acos();
+
+            let ang_diff = ang_curr - self.target_angle;
+
+            let ang = ang_diff * 0.5 * str;
+
+            anc_a.p = anc_a.p.rotate_around_point( anc_b.p, -ang );
+            anc_c.p = anc_c.p.rotate_around_point( anc_b.p, ang );
+
+    }
+}
+
+
 // ============================================
 
 enum Constraint {
     DummyConstraint,
     FixedLength( FixedLengthConstraint ),
     Parallel( ParallelConstraint ),
+    Angle( AngleConstraint ),
 }
-
-
-
-
 
 
 // ============================================

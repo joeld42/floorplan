@@ -43,7 +43,9 @@ fn main() {
 
     floorplan.csys.add_constraint_fixed_len( a, d, None );
 
-    floorplan.csys.add_constraint_parallel( a, b, d, c );
+    //floorplan.csys.add_constraint_parallel( a, b, d, c );
+
+    floorplan.csys.add_constraint_angle( a, b, c, None );
 
     App::new()
         //.insert_resource(WinitSettings::desktop_app())
