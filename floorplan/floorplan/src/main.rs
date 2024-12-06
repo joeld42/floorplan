@@ -12,42 +12,41 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy_vello::{ prelude::*, VelloPlugin };
 
 use constraints::{ add, add_vec2, ConstraintSystem };
+use floorplan::Floorplan;
 
+mod diagram;
 mod ui;
+mod floorplan;
 
-
-#[derive(Resource, Default)]
-struct InteractionState {
-    hover_anchor : Option<usize>,
-    drag_anchor : Option<usize>,
-}
 
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 
 #[derive(Resource, Deref, DerefMut)]
 struct OriginalCameraTransform(Transform);
 
-#[derive(Resource)]
-struct Floorplan
-{
-    csys : ConstraintSystem,
-}
 
 
 fn main() {
 
-    let mut csys = ConstraintSystem::new();
 
-    csys.add_anchor( Vec2::new( -100.0, -100.0 ));
-    csys.add_anchor( Vec2::new(  100.0, -100.0 ));
-    csys.add_anchor( Vec2::new( -100.0, 120.0 ));
-    csys.add_anchor( Vec2::new(  100.0, 100.0 ));
+    //let mut csys = ConstraintSystem::new();
+    let mut floorplan = Floorplan::default();
+
+    let a = floorplan.csys.add_anchor( Vec2::new( -100.0, -100.0 ));
+    let b = floorplan.csys.add_anchor( Vec2::new(  100.0, -100.0 ));
+    let c = floorplan.csys.add_anchor( Vec2::new(  100.0, 120.0 ));
+    let d = floorplan.csys.add_anchor( Vec2::new(  -100.0, 100.0 ));
+
+    floorplan.walls.push( floorplan::Wall { anchor_a : a, anchor_b : b, ..default() });
+    floorplan.walls.push( floorplan::Wall { anchor_a : b, anchor_b : c, ..default() });
+    floorplan.walls.push( floorplan::Wall { anchor_a : c, anchor_b : d, ..default() });
+    floorplan.walls.push( floorplan::Wall { anchor_a : d, anchor_b : a, style : floorplan::WallStyle::Exterior });
 
     App::new()
         //.insert_resource(WinitSettings::desktop_app())
-        .insert_resource( Floorplan { csys : csys })
+        .insert_resource( floorplan )
         .insert_resource(ClearColor(Color::srgb(0.176, 0.247, 0.431)))
-        .init_resource::<InteractionState>()
+        .init_resource::<floorplan::InteractionState>()
         .add_plugins(DefaultPlugins)
         .add_plugins(VelloPlugin::default())
         .add_plugins(EguiPlugin)
@@ -56,7 +55,7 @@ fn main() {
         .init_resource::<ui::OccupiedScreenSpace>()
         .add_systems(Startup, setup_system)
         .add_systems(Update, ui::ui_example_system)
-        .add_systems(Update, vello_animation)
+        .add_systems(Update, diagram::render_diagram)
         .add_systems( Update, cursor_events )
         //.add_systems(Update, update_camera_transform_system)
         .run();
@@ -174,8 +173,8 @@ fn cursor_events(
     buttons: Res<ButtonInput<MouseButton>>,
     q_camera: Query<(&Camera, &Camera2d, &GlobalTransform)>,
     mut q_pancam : Query<&mut bevy_pancam::PanCam>,
-    mut floorplan : ResMut<Floorplan>,
-    mut state : ResMut<InteractionState>,
+    mut floorplan : ResMut<floorplan::Floorplan>,
+    mut state : ResMut<floorplan::InteractionState>,
 ) {
     for ev in evr_cursor.read() {
 
@@ -224,64 +223,5 @@ fn cursor_events(
 }
 
 
-fn vello_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
-                    floorplan: Res<Floorplan>,
-                    state: Res<InteractionState>,
-                    //time: Res<Time>
-                    ) {
-    //let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
-    let (mut _transform, mut scene) = query_scene.single_mut();
 
-
-    // Reset scene every frame
-    *scene = VelloScene::default();
-
-    for (ndx, anc) in floorplan.csys.anchors.iter().enumerate() {
-
-        let radius = match state.hover_anchor {
-            Some(hover_ndx) if hover_ndx == ndx => 8.0,
-            _ => 5.0,
-        };
-
-        scene.fill(
-            peniko::Fill::NonZero,
-            kurbo::Affine::default(),
-            peniko::Color::GOLDENROD,
-            None,
-            &kurbo::Circle::new(
-                 kurbo::Point::new( anc.p.x.into(),  (-anc.p.y).into() ), radius ),
-        );
-
-    }
-
-    /*
-    // Animate color green to blue
-    let c = Vec3::lerp(
-        Vec3::new(-1.0, 1.0, -1.0),
-        Vec3::new(-1.0, 1.0, 1.0),
-        sin_time + 0.5,
-    );
-
-    // Animate the corner radius
-    scene.fill(
-        peniko::Fill::NonZero,
-        kurbo::Affine::default(),
-        peniko::Color::rgb(c.x as f64, c.y as f64, c.z as f64),
-        None,
-        &kurbo::RoundedRect::new(-50.0, -50.0, 50.0, 50.0, (sin_time as f64) * 50.0),
-    );
-
-    scene.fill(
-        peniko::Fill::NonZero,
-        kurbo::Affine::default(),
-        peniko::Color::rgb(1.0, 1.0, 0.2 ),
-        None,
-        &kurbo::RoundedRect::new(-20.0, -20.0, 20.0, 20.0, (sin_time as f64) * 20.0),
-    );
-    */
-
-    // transform.scale = Vec3::lerp(Vec3::ONE * 0.5, Vec3::ONE * 1.0, sin_time);
-    // transform.translation = Vec3::lerp(Vec3::X * -100.0, Vec3::X * 100.0, sin_time);
-    // transform.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * sin_time);
-}
 

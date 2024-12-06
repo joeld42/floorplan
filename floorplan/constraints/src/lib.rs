@@ -2,6 +2,7 @@ pub use glam::{ Vec2 };
 
 
 
+#[derive(Copy,Clone)]
 pub enum PinMode
 {
     Unpinned,
@@ -10,16 +11,24 @@ pub enum PinMode
     PinXY,
 }
 
+#[derive(Copy,Clone)]
 pub struct AnchorPoint
 {
     pub p : Vec2,
     pub pin : PinMode,
 }
 
+#[derive(Default)]
 pub struct ConstraintSystem
 {
     pub anchors : Vec<AnchorPoint>,
 }
+
+// impl Default for ConstraintSystem {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
 
 impl ConstraintSystem
 {
