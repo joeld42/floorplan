@@ -1,5 +1,6 @@
 pub use glam::{ Vec2 };
 
+
 #[derive(Copy,Clone)]
 pub enum PinMode
 {
@@ -29,6 +30,9 @@ pub struct ConstraintSystem
 //     }
 // }
 
+
+
+
 impl ConstraintSystem
 {
     pub fn new() -> Self {
@@ -56,12 +60,20 @@ impl ConstraintSystem
         self.constraints.push( Constraint::FixedLength( FixedLengthConstraint { anc_a : a, anc_b : b, target_len : target_len }) );
     }
 
-    pub fn eval_system( &mut self ) {
-        // let steps = 100;
-        // let base_str = 5.0;
+    pub fn add_constraint_parallel( &mut self, a : usize, b : usize, c : usize, d : usize ) {
 
-        let steps = 1;
-        let base_str = 1.0;
+        self.constraints.push(
+            Constraint::Parallel( ParallelConstraint { anc_a : a, anc_b : b, anc_c : c, anc_d : d } )
+        );
+
+    }
+
+    pub fn eval_system( &mut self ) {
+        let steps = 100;
+        let base_str = 5.0;
+
+        // let steps = 1;
+        // let base_str = 1.0;
 
         let str = base_str / (steps as f32);
 
@@ -83,6 +95,18 @@ impl ConstraintSystem
                         self.anchors[fixed_len.anc_b].p = anc_b.p;
 
                     }
+
+                    Constraint::Parallel( parallel ) => {
+                        let mut anc_a = self.anchors[ parallel.anc_a ];
+                        let mut anc_b = self.anchors[ parallel.anc_b ];
+                        let mut anc_c = self.anchors[ parallel.anc_c ];
+                        let mut anc_d = self.anchors[ parallel.anc_d ];
+                        parallel.eval( &mut anc_a, &mut anc_b, &mut anc_c, &mut anc_d, str  );
+                        self.anchors[parallel.anc_a].p = anc_a.p;
+                        self.anchors[parallel.anc_b].p = anc_b.p;
+                        self.anchors[parallel.anc_c].p = anc_c.p;
+                        self.anchors[parallel.anc_d].p = anc_d.p;
+                    }
                 }
             }
         }
@@ -91,7 +115,7 @@ impl ConstraintSystem
 }
 
 // ====== [ FixedLengthConstraint ]==============================
-
+// Constrains AB to be the length target_len
 struct FixedLengthConstraint {
     anc_a : usize,
     anc_b : usize,
@@ -114,10 +138,63 @@ impl FixedLengthConstraint {
 }
 
 // ============================================
+// Rotation helpers
+pub trait Vec2RotationHelpers {
+    fn rotate_around_point( &self, center : Vec2, ang_radians : f32 ) -> Vec2;
+}
+impl Vec2RotationHelpers for Vec2 {
+    fn rotate_around_point( &self, center : Vec2, ang_radians : f32 ) -> Vec2 {
+        let p2 = *self - center;
+        let s = ang_radians.sin();
+        let c = ang_radians.cos();
+        let pr = Vec2::new( p2.x*c - p2.y*s, p2.x*s + p2.y*c );
+
+        // rotated result
+        center + pr
+    }
+}
+
+
+// ====== [ Parallel Constraint ]==============================
+// Constrains AB to be parallel to CD
+struct ParallelConstraint {
+    anc_a : usize,
+    anc_b : usize,
+    anc_c : usize,
+    anc_d : usize,
+}
+
+impl ParallelConstraint {
+
+    // might be cleaner to do this by halves? eval AB, and then CD?
+    fn eval( self : &Self,
+        a1 : &mut AnchorPoint, b1 : &mut AnchorPoint,
+        a2 : &mut AnchorPoint, b2 : &mut AnchorPoint,
+        str : f32  ) {
+
+            // this is some weird atan2 syntax
+            let ang1 = ( b1.p.y - a1.p.y).atan2( b1.p.x - a1.p.x );
+            let ang2 = ( b2.p.y - a2.p.y).atan2( b2.p.x - a2.p.x );
+
+            let ang_diff = ang2 - ang1;
+            let ang = ang_diff * 0.5 * str;
+
+            let ctr1 = (a1.p + b1.p) * 0.5;
+            a1.p = a1.p.rotate_around_point( ctr1, ang );
+            b1.p = b1.p.rotate_around_point( ctr1, ang );
+
+            let ctr2 = (a2.p + b2.p) * 0.5;
+            a2.p = a2.p.rotate_around_point( ctr1, -ang );
+            b2.p = b2.p.rotate_around_point( ctr1, -ang );
+    }
+}
+
+// ============================================
 
 enum Constraint {
     DummyConstraint,
     FixedLength( FixedLengthConstraint ),
+    Parallel( ParallelConstraint ),
 }
 
 
