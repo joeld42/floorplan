@@ -1,28 +1,25 @@
-use bevy::{prelude::*, window::PrimaryWindow, winit::WinitSettings};
+//use bevy::{prelude::*, window::PrimaryWindow };
+use bevy::{prelude::* };
 use bevy::render::camera::ScalingMode;
 use bevy_egui::{
     //egui::{self, Color32},
-    egui::{self},
-    EguiContexts, EguiPlugin};
+    // egui::{self},
+    // EguiContexts,
+    EguiPlugin};
 
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 
 use bevy_vello::{ prelude::*, VelloPlugin };
 
-use constraints::{ add, addV2, ConstraintSystem, AnchorPoint };
+use constraints::{ add, add_vec2, ConstraintSystem };
 
-#[derive(Default, Resource)]
-struct OccupiedScreenSpace {
-    left: f32,
-    top: f32,
-    right: f32,
-    bottom: f32,
-}
+mod ui;
+
 
 #[derive(Resource, Default)]
 struct InteractionState {
-    hoverAnchor : Option<usize>,
-    dragAnchor : Option<usize>,
+    hover_anchor : Option<usize>,
+    drag_anchor : Option<usize>,
 }
 
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
@@ -41,91 +38,35 @@ fn main() {
 
     let mut csys = ConstraintSystem::new();
 
-    let a = csys.add_anchor( Vec2::new( -100.0, -100.0 ));
-    let b = csys.add_anchor( Vec2::new(  100.0, -100.0 ));
-    let c = csys.add_anchor( Vec2::new( -100.0, 120.0 ));
-    let d = csys.add_anchor( Vec2::new(  100.0, 100.0 ));
+    csys.add_anchor( Vec2::new( -100.0, -100.0 ));
+    csys.add_anchor( Vec2::new(  100.0, -100.0 ));
+    csys.add_anchor( Vec2::new( -100.0, 120.0 ));
+    csys.add_anchor( Vec2::new(  100.0, 100.0 ));
 
     App::new()
         //.insert_resource(WinitSettings::desktop_app())
         .insert_resource( Floorplan { csys : csys })
         .insert_resource(ClearColor(Color::srgb(0.176, 0.247, 0.431)))
-        //.insert_resource( InteractionState )
         .init_resource::<InteractionState>()
         .add_plugins(DefaultPlugins)
         .add_plugins(VelloPlugin::default())
         .add_plugins(EguiPlugin)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
-        .init_resource::<OccupiedScreenSpace>()
+        .add_plugins(bevy_pancam::PanCamPlugin)
+        .init_resource::<ui::OccupiedScreenSpace>()
         .add_systems(Startup, setup_system)
-        .add_systems(Update, ui_example_system)
+        .add_systems(Update, ui::ui_example_system)
         .add_systems(Update, vello_animation)
         .add_systems( Update, cursor_events )
         //.add_systems(Update, update_camera_transform_system)
         .run();
 }
 
-fn ui_example_system(
-    mut is_last_selected: Local<bool>,
-    mut contexts: EguiContexts,
-    mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
-) {
-    let ctx = contexts.ctx_mut();
-
-    occupied_screen_space.left = egui::SidePanel::left("left_panel")
-        .resizable(true)
-        .show(ctx, |ui| {
-            ui.label("Left resizeable panel");
-            if ui
-                .add(egui::widgets::Button::new("A button").selected(!*is_last_selected))
-                .clicked()
-            {
-                *is_last_selected = false;
-            }
-            if ui
-                .add(egui::widgets::Button::new("Another button").selected(*is_last_selected))
-                .clicked()
-            {
-                *is_last_selected = true;
-            }
-            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-        })
-        .response
-        .rect
-        .width();
-    // occupied_screen_space.right = egui::SidePanel::right("right_panel")
-    //     .resizable(true)
-    //     .show(ctx, |ui| {
-    //         ui.label("Right resizeable panel");
-    //         ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-    //     })
-    //     .response
-    //     .rect
-    //     .width();
-    // occupied_screen_space.top = egui::TopBottomPanel::top("top_panel")
-    //     .resizable(true)
-    //     .show(ctx, |ui| {
-    //         ui.label("Top resizeable panel");
-    //         ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-    //     })
-    //     .response
-    //     .rect
-    //     .height();
-    occupied_screen_space.bottom = egui::TopBottomPanel::bottom("status_bar")
-        .resizable(false)
-        .show(ctx, |ui| {
-            ui.label("Status Bar");
-            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-        })
-        .response
-        .rect
-        .height();
-}
 
 fn setup_system(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    //mut meshes: ResMut<Assets<Mesh>>,
+    //mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
     let mut camera2d = Camera2dBundle {
@@ -144,11 +85,14 @@ fn setup_system(
 
 
     // Spawn diagram scene
-    commands.spawn( camera2d );
+    commands.spawn( (camera2d, bevy_pancam::PanCam::default() ) );
 
     commands.spawn(VelloSceneBundle::default());
 
+
+
     // Spawn 3D scene
+    /*
     commands.spawn(PbrBundle {
         mesh: meshes.add(Plane3d::default().mesh().size(5.0, 5.0)),
         material: materials.add(Color::srgb(0.3, 0.5, 0.3)),
@@ -169,6 +113,7 @@ fn setup_system(
          transform: Transform::from_xyz(4.0, 8.0, 4.0),
          ..Default::default()
     });
+*/
 
 
     let camera_pos = Vec3::new(-2.0, 2.5, 5.0);
@@ -188,13 +133,14 @@ fn setup_system(
         ..Default::default()
     });
 
-    let result = addV2( Vec2::new( 1.0,1.0 ), Vec2::new( 3.0, 5.0 ) );
+    let result = add_vec2( Vec2::new( 1.0,1.0 ), Vec2::new( 3.0, 5.0 ) );
     println!( "test add {:?} {:?}", add( 3, 4), result );
 
 }
 
+/*
 fn update_camera_transform_system(
-    occupied_screen_space: Res<OccupiedScreenSpace>,
+    occupied_screen_space: Res<ui::OccupiedScreenSpace>,
     original_camera_transform: Res<OriginalCameraTransform>,
     windows: Query<&Window, With<PrimaryWindow>>,
     mut camera_query: Query<(&Projection, &mut Transform)>,
@@ -221,42 +167,49 @@ fn update_camera_transform_system(
             0.0,
         ));
 }
+*/
 
 fn cursor_events(
     mut evr_cursor: EventReader<CursorMoved>,
     buttons: Res<ButtonInput<MouseButton>>,
     q_camera: Query<(&Camera, &Camera2d, &GlobalTransform)>,
+    mut q_pancam : Query<&mut bevy_pancam::PanCam>,
     mut floorplan : ResMut<Floorplan>,
     mut state : ResMut<InteractionState>,
 ) {
     for ev in evr_cursor.read() {
 
-        let ( cam, cam2d, cam_transform ) = q_camera.single();
+        let ( cam, _, cam_transform ) = q_camera.single();
 
         let Some(world_pos) = cam.viewport_to_world_2d( cam_transform, ev.position ) else {
             return
         };
 
-        println!(
-            "New cursor position: X: {}, Y: {}, world {world_pos} in Window ID: {:?}",
-            ev.position.x, ev.position.y, ev.window
-        );
+        // println!(
+        //     "New cursor position: X: {}, Y: {}, world {world_pos} in Window ID: {:?}",
+        //     ev.position.x, ev.position.y, ev.window
+        // );
 
         // TODO: screen space dist instead of world space?
-        if (state.dragAnchor.is_none()) {
+        if state.drag_anchor.is_none() {
 
             // update the hover anchor if we're not currently dragging
-            let mut hoverAnc:  Option<usize> = None;
+            let mut hover_anc:  Option<usize> = None;
             for (ndx, anc) in floorplan.csys.anchors.iter().enumerate() {
                 if anc.p.distance(world_pos) < 5.0 {
-                    hoverAnc = Some(ndx)
+                    hover_anc = Some(ndx)
                 }
             }
-            state.hoverAnchor = hoverAnc;
+            state.hover_anchor = hover_anc;
+
+            // disable camera panning if hovering
+            let mut pancam = q_pancam.single_mut();
+            pancam.enabled = state.hover_anchor.is_none();
+
         }
 
-        state.dragAnchor = if buttons.pressed( MouseButton::Left ) {
-             state.hoverAnchor
+        state.drag_anchor = if buttons.pressed( MouseButton::Left ) {
+             state.hover_anchor
         } else {
 
 
@@ -264,7 +217,7 @@ fn cursor_events(
         };
 
         // Adjust drag anchor
-        if let Some(drag_anchor) = state.dragAnchor {
+        if let Some(drag_anchor) = state.drag_anchor {
             floorplan.csys.anchors[drag_anchor].p = world_pos;
         }
     }
@@ -274,16 +227,18 @@ fn cursor_events(
 fn vello_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
                     floorplan: Res<Floorplan>,
                     state: Res<InteractionState>,
-                    time: Res<Time>) {
-    let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
-    let (mut transform, mut scene) = query_scene.single_mut();
+                    //time: Res<Time>
+                    ) {
+    //let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
+    let (mut _transform, mut scene) = query_scene.single_mut();
+
 
     // Reset scene every frame
     *scene = VelloScene::default();
 
     for (ndx, anc) in floorplan.csys.anchors.iter().enumerate() {
 
-        let radius = match state.hoverAnchor {
+        let radius = match state.hover_anchor {
             Some(hover_ndx) if hover_ndx == ndx => 8.0,
             _ => 5.0,
         };

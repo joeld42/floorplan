@@ -36,7 +36,14 @@ impl ConstraintSystem
 }
 
 
-pub fn addV2( left : Vec2, right: Vec2 ) -> Vec2 {
+
+
+
+
+
+
+
+pub fn add_vec2( left : Vec2, right: Vec2 ) -> Vec2 {
     return left + right;
 }
 
