@@ -25,7 +25,6 @@ const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 struct OriginalCameraTransform(Transform);
 
 
-
 fn main() {
 
 
@@ -42,6 +41,8 @@ fn main() {
     floorplan.walls.push( floorplan::Wall { anchor_a : c, anchor_b : d, ..default() });
     floorplan.walls.push( floorplan::Wall { anchor_a : d, anchor_b : a, style : floorplan::WallStyle::Exterior });
 
+    floorplan.csys.add_constraint_fixed_len( a, d, None );
+
     App::new()
         //.insert_resource(WinitSettings::desktop_app())
         .insert_resource( floorplan )
@@ -56,6 +57,7 @@ fn main() {
         .add_systems(Startup, setup_system)
         .add_systems(Update, ui::ui_example_system)
         .add_systems(Update, diagram::render_diagram)
+        .add_systems( Update, update_constraints )
         .add_systems( Update, cursor_events )
         //.add_systems(Update, update_camera_transform_system)
         .run();
@@ -167,6 +169,12 @@ fn update_camera_transform_system(
         ));
 }
 */
+
+fn update_constraints( mut floorplan : ResMut<floorplan::Floorplan> )
+{
+    // update the constraint solver
+    floorplan.csys.eval_system();
+}
 
 fn cursor_events(
     mut evr_cursor: EventReader<CursorMoved>,
