@@ -1,7 +1,7 @@
 
 [workspace]
 resolver = "2" # Important! wgpu/Bevy needs this!
-members = [
+members = [ "constraints",
     "floorplan",
     "run_wasm",
 ]
@@ -27,8 +27,7 @@ bevy = { version = "0.14.0", default-features = false, features = [
   "tonemapping_luts",
   "bevy_gizmos",
 ] }
-
-
+constraints = { path = "constraints" }
 
 
 #[target.wasm32-unknown-unknown]

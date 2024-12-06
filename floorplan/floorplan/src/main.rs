@@ -1,10 +1,15 @@
 use bevy::{prelude::*, window::PrimaryWindow, winit::WinitSettings};
+use bevy::render::camera::ScalingMode;
 use bevy_egui::{
     //egui::{self, Color32},
     egui::{self},
     EguiContexts, EguiPlugin};
 
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+
 use bevy_vello::{ prelude::*, VelloPlugin };
+
+use constraints::{ add, addV2, ConstraintSystem, AnchorPoint };
 
 #[derive(Default, Resource)]
 struct OccupiedScreenSpace {
@@ -19,12 +24,24 @@ const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 #[derive(Resource, Deref, DerefMut)]
 struct OriginalCameraTransform(Transform);
 
+#[derive(Resource)]
+struct Floorplan
+{
+    csys : ConstraintSystem,
+}
+
+
 fn main() {
+
+    let csys = ConstraintSystem::new();
+
     App::new()
         //.insert_resource(WinitSettings::desktop_app())
+        .insert_resource( Floorplan { csys : csys })
         .add_plugins(DefaultPlugins)
         .add_plugins(VelloPlugin::default())
         .add_plugins(EguiPlugin)
+        .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .init_resource::<OccupiedScreenSpace>()
         .add_systems(Startup, setup_system)
         .add_systems(Update, ui_example_system)
@@ -96,16 +113,21 @@ fn setup_system(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
-    // Spawn diagram scene
-    commands.spawn(Camera2dBundle {
+    let mut camera2d = Camera2dBundle {
         camera: Camera {
             clear_color: ClearColorConfig::None,
             order: 1,
             ..default()
         },
-
         ..Default::default()
-     });
+     };
+
+    camera2d.projection.scaling_mode = ScalingMode::FixedVertical(1000.0);
+    //camera2d.transform = Transform::from_xyz(100.0, 200.0, 0.0);
+
+
+    // Spawn diagram scene
+    commands.spawn( camera2d );
 
     commands.spawn(VelloSceneBundle::default());
 
@@ -149,6 +171,9 @@ fn setup_system(
         ..Default::default()
     });
 
+    let result = addV2( Vec2::new( 1.0,1.0 ), Vec2::new( 3.0, 5.0 ) );
+    println!( "test add {:?} {:?}", add( 3, 4), result );
+
 }
 
 fn update_camera_transform_system(
@@ -183,6 +208,7 @@ fn update_camera_transform_system(
 fn vello_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>, time: Res<Time>) {
     let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
     let (mut transform, mut scene) = query_scene.single_mut();
+
     // Reset scene every frame
     *scene = VelloScene::default();
 
@@ -202,8 +228,16 @@ fn vello_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>, ti
         &kurbo::RoundedRect::new(-50.0, -50.0, 50.0, 50.0, (sin_time as f64) * 50.0),
     );
 
-    transform.scale = Vec3::lerp(Vec3::ONE * 0.5, Vec3::ONE * 1.0, sin_time);
-    transform.translation = Vec3::lerp(Vec3::X * -100.0, Vec3::X * 100.0, sin_time);
-    transform.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * sin_time);
+    scene.fill(
+        peniko::Fill::NonZero,
+        kurbo::Affine::default(),
+        peniko::Color::rgb(1.0, 1.0, 0.2 ),
+        None,
+        &kurbo::RoundedRect::new(-20.0, -20.0, 20.0, 20.0, (sin_time as f64) * 20.0),
+    );
+
+    // transform.scale = Vec3::lerp(Vec3::ONE * 0.5, Vec3::ONE * 1.0, sin_time);
+    // transform.translation = Vec3::lerp(Vec3::X * -100.0, Vec3::X * 100.0, sin_time);
+    // transform.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * sin_time);
 }
 
