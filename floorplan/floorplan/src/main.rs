@@ -19,6 +19,12 @@ struct OccupiedScreenSpace {
     bottom: f32,
 }
 
+#[derive(Resource, Default)]
+struct InteractionState {
+    hoverAnchor : Option<usize>,
+    dragAnchor : Option<usize>,
+}
+
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 
 #[derive(Resource, Deref, DerefMut)]
@@ -33,11 +39,19 @@ struct Floorplan
 
 fn main() {
 
-    let csys = ConstraintSystem::new();
+    let mut csys = ConstraintSystem::new();
+
+    let a = csys.add_anchor( Vec2::new( -100.0, -100.0 ));
+    let b = csys.add_anchor( Vec2::new(  100.0, -100.0 ));
+    let c = csys.add_anchor( Vec2::new( -100.0, 120.0 ));
+    let d = csys.add_anchor( Vec2::new(  100.0, 100.0 ));
 
     App::new()
         //.insert_resource(WinitSettings::desktop_app())
         .insert_resource( Floorplan { csys : csys })
+        .insert_resource(ClearColor(Color::srgb(0.176, 0.247, 0.431)))
+        //.insert_resource( InteractionState )
+        .init_resource::<InteractionState>()
         .add_plugins(DefaultPlugins)
         .add_plugins(VelloPlugin::default())
         .add_plugins(EguiPlugin)
@@ -46,6 +60,7 @@ fn main() {
         .add_systems(Startup, setup_system)
         .add_systems(Update, ui_example_system)
         .add_systems(Update, vello_animation)
+        .add_systems( Update, cursor_events )
         //.add_systems(Update, update_camera_transform_system)
         .run();
 }
@@ -115,14 +130,16 @@ fn setup_system(
 
     let mut camera2d = Camera2dBundle {
         camera: Camera {
-            clear_color: ClearColorConfig::None,
+            //clear_color: ClearColorConfig::None,
+            //clear_color: ClearColorConfig::Custom Color::srgb(0.176, 0.247, 0.431),
             order: 1,
             ..default()
         },
         ..Default::default()
      };
 
-    camera2d.projection.scaling_mode = ScalingMode::FixedVertical(1000.0);
+    // initial view 400m
+    camera2d.projection.scaling_mode = ScalingMode::FixedVertical(400.0);
     //camera2d.transform = Transform::from_xyz(100.0, 200.0, 0.0);
 
 
@@ -205,13 +222,84 @@ fn update_camera_transform_system(
         ));
 }
 
-fn vello_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>, time: Res<Time>) {
+fn cursor_events(
+    mut evr_cursor: EventReader<CursorMoved>,
+    buttons: Res<ButtonInput<MouseButton>>,
+    q_camera: Query<(&Camera, &Camera2d, &GlobalTransform)>,
+    mut floorplan : ResMut<Floorplan>,
+    mut state : ResMut<InteractionState>,
+) {
+    for ev in evr_cursor.read() {
+
+        let ( cam, cam2d, cam_transform ) = q_camera.single();
+
+        let Some(world_pos) = cam.viewport_to_world_2d( cam_transform, ev.position ) else {
+            return
+        };
+
+        println!(
+            "New cursor position: X: {}, Y: {}, world {world_pos} in Window ID: {:?}",
+            ev.position.x, ev.position.y, ev.window
+        );
+
+        // TODO: screen space dist instead of world space?
+        if (state.dragAnchor.is_none()) {
+
+            // update the hover anchor if we're not currently dragging
+            let mut hoverAnc:  Option<usize> = None;
+            for (ndx, anc) in floorplan.csys.anchors.iter().enumerate() {
+                if anc.p.distance(world_pos) < 5.0 {
+                    hoverAnc = Some(ndx)
+                }
+            }
+            state.hoverAnchor = hoverAnc;
+        }
+
+        state.dragAnchor = if buttons.pressed( MouseButton::Left ) {
+             state.hoverAnchor
+        } else {
+
+
+            None
+        };
+
+        // Adjust drag anchor
+        if let Some(drag_anchor) = state.dragAnchor {
+            floorplan.csys.anchors[drag_anchor].p = world_pos;
+        }
+    }
+}
+
+
+fn vello_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
+                    floorplan: Res<Floorplan>,
+                    state: Res<InteractionState>,
+                    time: Res<Time>) {
     let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
     let (mut transform, mut scene) = query_scene.single_mut();
 
     // Reset scene every frame
     *scene = VelloScene::default();
 
+    for (ndx, anc) in floorplan.csys.anchors.iter().enumerate() {
+
+        let radius = match state.hoverAnchor {
+            Some(hover_ndx) if hover_ndx == ndx => 8.0,
+            _ => 5.0,
+        };
+
+        scene.fill(
+            peniko::Fill::NonZero,
+            kurbo::Affine::default(),
+            peniko::Color::GOLDENROD,
+            None,
+            &kurbo::Circle::new(
+                 kurbo::Point::new( anc.p.x.into(),  (-anc.p.y).into() ), radius ),
+        );
+
+    }
+
+    /*
     // Animate color green to blue
     let c = Vec3::lerp(
         Vec3::new(-1.0, 1.0, -1.0),
@@ -235,6 +323,7 @@ fn vello_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>, ti
         None,
         &kurbo::RoundedRect::new(-20.0, -20.0, 20.0, 20.0, (sin_time as f64) * 20.0),
     );
+    */
 
     // transform.scale = Vec3::lerp(Vec3::ONE * 0.5, Vec3::ONE * 1.0, sin_time);
     // transform.translation = Vec3::lerp(Vec3::X * -100.0, Vec3::X * 100.0, sin_time);

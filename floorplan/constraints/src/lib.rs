@@ -1,5 +1,7 @@
 pub use glam::{ Vec2 };
 
+
+
 pub enum PinMode
 {
     Unpinned,
@@ -25,6 +27,7 @@ impl ConstraintSystem
         Self { anchors: Vec::new() }
     }
 
+    // todo: way to wrap index so it's typesafe?
     pub fn add_anchor( &mut self, p : Vec2 ) -> usize {
         let index = self.anchors.len();
         self.anchors.push( AnchorPoint { p : p, pin : PinMode::Unpinned });
