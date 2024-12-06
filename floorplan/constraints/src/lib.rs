@@ -96,7 +96,7 @@ impl ConstraintSystem
 
         let str = base_str / (steps as f32);
 
-        for substep in 0..steps {
+        for _substep in 0..steps {
 
             for cons in self.constraints.iter() {
 

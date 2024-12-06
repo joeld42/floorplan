@@ -42,10 +42,26 @@ pub struct Floorplan
     pub walls : Vec<Wall>,
 }
 
+
+#[derive(Copy, Clone,PartialEq)]
+pub enum InteractionMode {
+    Adjust,
+    Select,
+}
+impl Default for InteractionMode {
+    fn default() -> Self {
+        InteractionMode::Adjust
+    }
+}
+
 #[derive(Resource, Default)]
 pub struct InteractionState {
+    pub mode : InteractionMode,
+    pub world_cursor : Vec2,
     pub hover_anchor : Option<usize>,
     pub drag_anchor : Option<usize>,
+
+    pub selected_anchors : Vec<usize>,
 }
 
 

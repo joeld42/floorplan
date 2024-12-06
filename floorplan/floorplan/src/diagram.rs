@@ -72,10 +72,16 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
             _ => 5.0,
         };
 
+        let acolor = if state.selected_anchors.contains( &ndx ) {
+            peniko::Color::LIGHT_GREEN
+        } else {
+            peniko::Color::GOLDENROD
+        };
+
         scene.fill(
             peniko::Fill::NonZero,
             kurbo::Affine::default(),
-            peniko::Color::GOLDENROD,
+            acolor,
             None,
             &kurbo::Circle::new( anc.p.diagp(), radius ),
         );

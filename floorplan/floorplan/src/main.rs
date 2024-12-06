@@ -1,5 +1,7 @@
 //use bevy::{prelude::*, window::PrimaryWindow };
 use bevy::{prelude::* };
+use bevy::input::mouse::MouseButtonInput;
+
 use bevy::render::camera::ScalingMode;
 use bevy_egui::{
     //egui::{self, Color32},
@@ -63,6 +65,7 @@ fn main() {
         .add_systems(Update, diagram::render_diagram)
         .add_systems( Update, update_constraints )
         .add_systems( Update, cursor_events )
+        .add_systems( Update, mouse_button_events )
         //.add_systems(Update, update_camera_transform_system)
         .run();
 }
@@ -196,6 +199,9 @@ fn cursor_events(
             return
         };
 
+        // update the world cursor
+        state.world_cursor = world_pos;
+
         // println!(
         //     "New cursor position: X: {}, Y: {}, world {world_pos} in Window ID: {:?}",
         //     ev.position.x, ev.position.y, ev.window
@@ -219,13 +225,18 @@ fn cursor_events(
 
         }
 
-        state.drag_anchor = if buttons.pressed( MouseButton::Left ) {
-             state.hover_anchor
-        } else {
+        match state.mode {
+            floorplan::InteractionMode::Adjust => {
+                state.drag_anchor = if buttons.pressed( MouseButton::Left ) {
+                    state.hover_anchor
+               } else {
+                   None
+               };
+            }
 
+            floorplan::InteractionMode::Select => { }
+        }
 
-            None
-        };
 
         // Adjust drag anchor
         if let Some(drag_anchor) = state.drag_anchor {
@@ -234,6 +245,50 @@ fn cursor_events(
     }
 }
 
+fn mouse_button_events(
+    mut floorplan : ResMut<floorplan::Floorplan>,
+    mut mousebtn_evr: EventReader<MouseButtonInput>,
+    mut state : ResMut<floorplan::InteractionState>,
+) {
+    use bevy::input::ButtonState;
+
+
+    for ev in mousebtn_evr.read() {
+
+
+        match ev.state {
+            ButtonState::Pressed => {
+                println!("Mouse button press: {:?}", ev.button);
+
+                // tmp: figure out better interaction
+                if ev.button == MouseButton::Right {
+
+                    let new_anc = floorplan.csys.add_anchor( state.world_cursor );
+                    state.selected_anchors.push( new_anc );
+                }
+
+                if (ev.button == MouseButton::Left) && (state.mode == floorplan::InteractionMode::Select) {
+
+                    if let Some(hover_anchor) = state.hover_anchor {
+                        // toggle selected
+                        if state.selected_anchors.contains( &hover_anchor ) {
+
+                            // Remove hover_anchor from state.selected_anchors
+                            state.selected_anchors.retain(|x| *x != hover_anchor );
+
+                        } else {
+                            state.selected_anchors.push( hover_anchor );
+                        }
+                    }
+                }
+
+            }
+            ButtonState::Released => {
+                println!("Mouse button release: {:?}", ev.button);
+            }
+        }
+    }
+}
 
 
 
