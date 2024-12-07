@@ -45,6 +45,19 @@ impl ConstraintSystem
         index
     }
 
+    pub fn find_constraint( &self, a : usize, b : usize ) -> Option<Constraint> {
+        self.constraints.iter().find( |cc| {
+            match cc {
+                Constraint::FixedLength( cc_fixed ) => {
+                    (cc_fixed.anc_a == a && cc_fixed.anc_b == b) ||
+                    (cc_fixed.anc_a == b && cc_fixed.anc_b == a)
+                }
+                _ => false
+            }
+
+        }).cloned()
+    }
+
     // If target_len is none, will use the current length between the anchors
     pub fn add_constraint_fixed_len( &mut self, a : usize, b : usize, target_len : Option<f32> ) {
 
@@ -144,6 +157,7 @@ impl ConstraintSystem
 
 // ====== [ FixedLengthConstraint ]==============================
 // Constrains AB to be the length target_len
+#[derive(Clone)]
 pub struct FixedLengthConstraint {
     pub anc_a : usize,
     pub anc_b : usize,
@@ -185,6 +199,7 @@ impl Vec2RotationHelpers for Vec2 {
 
 // ====== [ Parallel Constraint ]==============================
 // Constrains AB to be parallel to CD
+#[derive(Clone)]
 pub struct ParallelConstraint {
     pub anc_a : usize,
     pub anc_b : usize,
@@ -219,6 +234,7 @@ impl ParallelConstraint {
 
 // ====== [ Angle Constraint ]==============================
 // Constrains the angle ABC to be a target angle
+#[derive(Clone)]
 pub struct AngleConstraint {
     pub anc_a : usize,
     pub anc_b : usize,
@@ -254,6 +270,7 @@ impl AngleConstraint {
 
 // ============================================
 
+#[derive(Clone)]
 pub enum Constraint {
     //DummyConstraint,
     FixedLength( FixedLengthConstraint ),

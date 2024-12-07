@@ -6,6 +6,8 @@ use bevy_egui::{
     //EguiPlugin
     };
 
+use constraints::{ Constraint };
+
 #[derive(Default, Resource)]
 pub struct OccupiedScreenSpace {
     pub left: f32,
@@ -46,6 +48,7 @@ pub fn ui_example_system(
                 .clicked()
             {
                 state.mode = floorplan::InteractionMode::SelectWalls;
+                state.selected_anchors.clear();
             }
 
             // Mode button Select Anchors
@@ -55,6 +58,7 @@ pub fn ui_example_system(
                 .clicked()
             {
                 state.mode = floorplan::InteractionMode::SelectAnchors;
+                state.selected_walls.clear();
             }
 
             ui.label("Create");
@@ -146,6 +150,37 @@ pub fn ui_example_system(
 
                 floorplan.csys.add_constraint_angle( a,b,c,None);
             }
+
+
+            // Show current selection
+            ui.add(egui::Separator::default());
+            match state.mode {
+                floorplan::InteractionMode::SelectAnchors => {
+                },
+                floorplan::InteractionMode::SelectWalls => {
+
+                    if state.selected_walls.len() > 1 {
+
+                        // show a lable with how many walls selected
+                        ui.label( format!("{} walls selected", state.selected_walls.len() ));
+                    } else if state.selected_walls.len() == 1 {
+                        // See if we have a length constraint on this wall
+                        let wall = floorplan.walls[ state.selected_walls[0] ];
+                        let cons = floorplan.csys.find_constraint( wall.anchor_a, wall.anchor_b );
+
+                        match cons {
+                            Some( Constraint::FixedLength( cc_fixed ) ) => {
+                                ui.label( format!("Wall Length: {}", cc_fixed.target_len ));
+                            }
+                            _ => {}
+                        }
+
+
+                    }
+                },
+                _ => {},
+            }
+
 
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
