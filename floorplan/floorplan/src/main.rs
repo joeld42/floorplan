@@ -1,6 +1,5 @@
 //use bevy::{prelude::*, window::PrimaryWindow };
 use bevy::{prelude::* };
-use bevy::input::mouse::MouseButtonInput;
 
 use bevy::render::camera::ScalingMode;
 use bevy_egui::{
@@ -13,13 +12,12 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 
 use bevy_vello::{ prelude::*, VelloPlugin };
 
-use constraints::{ add, add_vec2, ConstraintSystem };
 use floorplan::Floorplan;
 
 mod diagram;
 mod ui;
 mod floorplan;
-
+mod interaction;
 
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 
@@ -49,6 +47,7 @@ fn main() {
 
     floorplan.csys.add_constraint_angle( a, b, c, None );
 
+    // TODO: split these systems into Plugins for tidyness
     App::new()
         //.insert_resource(WinitSettings::desktop_app())
         .insert_resource( floorplan )
@@ -64,8 +63,9 @@ fn main() {
         .add_systems(Update, ui::ui_example_system)
         .add_systems(Update, diagram::render_diagram)
         .add_systems( Update, update_constraints )
-        .add_systems( Update, cursor_events )
-        .add_systems( Update, mouse_button_events )
+        .add_systems( Update, interaction::cursor_events )
+        .add_systems( Update, interaction::mouse_button_events )
+        .add_systems( Update, interaction::update_selection )
         //.add_systems(Update, update_camera_transform_system)
         .run();
 }
@@ -141,8 +141,6 @@ fn setup_system(
         ..Default::default()
     });
 
-    let result = add_vec2( Vec2::new( 1.0,1.0 ), Vec2::new( 3.0, 5.0 ) );
-    println!( "test add {:?} {:?}", add( 3, 4), result );
 
 }
 
@@ -181,113 +179,6 @@ fn update_constraints( mut floorplan : ResMut<floorplan::Floorplan> )
 {
     // update the constraint solver
     floorplan.csys.eval_system();
-}
-
-fn cursor_events(
-    mut evr_cursor: EventReader<CursorMoved>,
-    buttons: Res<ButtonInput<MouseButton>>,
-    q_camera: Query<(&Camera, &Camera2d, &GlobalTransform)>,
-    mut q_pancam : Query<&mut bevy_pancam::PanCam>,
-    mut floorplan : ResMut<floorplan::Floorplan>,
-    mut state : ResMut<floorplan::InteractionState>,
-) {
-    for ev in evr_cursor.read() {
-
-        let ( cam, _, cam_transform ) = q_camera.single();
-
-        let Some(world_pos) = cam.viewport_to_world_2d( cam_transform, ev.position ) else {
-            return
-        };
-
-        // update the world cursor
-        state.world_cursor = world_pos;
-
-        // println!(
-        //     "New cursor position: X: {}, Y: {}, world {world_pos} in Window ID: {:?}",
-        //     ev.position.x, ev.position.y, ev.window
-        // );
-
-        // TODO: screen space dist instead of world space?
-        if state.drag_anchor.is_none() {
-
-            // update the hover anchor if we're not currently dragging
-            let mut hover_anc:  Option<usize> = None;
-            for (ndx, anc) in floorplan.csys.anchors.iter().enumerate() {
-                if anc.p.distance(world_pos) < 5.0 {
-                    hover_anc = Some(ndx)
-                }
-            }
-            state.hover_anchor = hover_anc;
-
-            // disable camera panning if hovering
-            let mut pancam = q_pancam.single_mut();
-            pancam.enabled = state.hover_anchor.is_none();
-
-        }
-
-        match state.mode {
-            floorplan::InteractionMode::Adjust => {
-                state.drag_anchor = if buttons.pressed( MouseButton::Left ) {
-                    state.hover_anchor
-               } else {
-                   None
-               };
-            }
-
-            floorplan::InteractionMode::Select => { }
-        }
-
-
-        // Adjust drag anchor
-        if let Some(drag_anchor) = state.drag_anchor {
-            floorplan.csys.anchors[drag_anchor].p = world_pos;
-        }
-    }
-}
-
-fn mouse_button_events(
-    mut floorplan : ResMut<floorplan::Floorplan>,
-    mut mousebtn_evr: EventReader<MouseButtonInput>,
-    mut state : ResMut<floorplan::InteractionState>,
-) {
-    use bevy::input::ButtonState;
-
-
-    for ev in mousebtn_evr.read() {
-
-
-        match ev.state {
-            ButtonState::Pressed => {
-                println!("Mouse button press: {:?}", ev.button);
-
-                // tmp: figure out better interaction
-                if ev.button == MouseButton::Right {
-
-                    let new_anc = floorplan.csys.add_anchor( state.world_cursor );
-                    state.selected_anchors.push( new_anc );
-                }
-
-                if (ev.button == MouseButton::Left) && (state.mode == floorplan::InteractionMode::Select) {
-
-                    if let Some(hover_anchor) = state.hover_anchor {
-                        // toggle selected
-                        if state.selected_anchors.contains( &hover_anchor ) {
-
-                            // Remove hover_anchor from state.selected_anchors
-                            state.selected_anchors.retain(|x| *x != hover_anchor );
-
-                        } else {
-                            state.selected_anchors.push( hover_anchor );
-                        }
-                    }
-                }
-
-            }
-            ButtonState::Released => {
-                println!("Mouse button release: {:?}", ev.button);
-            }
-        }
-    }
 }
 
 

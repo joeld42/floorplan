@@ -31,7 +31,7 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
     // draw walls
     let stroke_int = kurbo::Stroke::new(2.0);
     let stroke_ext = kurbo::Stroke::new(6.0);
-    for wall in floorplan.walls.iter() {
+    for (ndx, wall) in floorplan.walls.iter().enumerate() {
 
         let anc_a = floorplan.csys.anchors[ wall.anchor_a ];
         let anc_b = floorplan.csys.anchors[ wall.anchor_b ];
@@ -60,7 +60,12 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
         };
 
         //let line_stroke_color = peniko::Color::new([0.5373, 0.7059, 0.9804, 1.]);
-        scene.stroke(&stroke, kurbo::Affine::IDENTITY, peniko::Color::WHITE, None, &line);
+        let wall_col = match state.selected_wall {
+            Some( wall_ndx) if wall_ndx == ndx => peniko::Color::LIME_GREEN,
+            _ => peniko::Color::WHITE
+        };
+
+        scene.stroke(&stroke, kurbo::Affine::IDENTITY, wall_col, None, &line);
     }
 
 

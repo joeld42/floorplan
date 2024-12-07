@@ -56,7 +56,7 @@ pub fn ui_example_system(
             {
                 *is_last_selected = false;
 
-                if (state.selected_anchors.len() >= 2) {
+                if state.selected_anchors.len() >= 2 {
                     let a = state.selected_anchors[0];
                     let b = state.selected_anchors[1];
                     floorplan.walls.push( floorplan::Wall { anchor_a : a, anchor_b : b, ..default() });
