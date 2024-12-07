@@ -62,8 +62,8 @@ pub struct InteractionState {
     pub drag_anchor : Option<usize>,
 
     pub selected_anchors : Vec<usize>,
-    //pub selected_walls : Vec<usize>,
-    pub selected_wall : Option<usize>,
+    pub selected_walls : Vec<usize>,
+
 }
 
 

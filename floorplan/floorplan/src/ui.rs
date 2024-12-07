@@ -17,7 +17,6 @@ pub struct OccupiedScreenSpace {
 use super::floorplan;
 
 pub fn ui_example_system(
-    mut is_last_selected: Local<bool>,
     mut contexts: EguiContexts,
     mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
     mut floorplan: ResMut<floorplan::Floorplan>,
@@ -51,11 +50,9 @@ pub fn ui_example_system(
 
             ui.label("Create");
             if ui
-                .add(egui::widgets::Button::new("WALL").selected(!*is_last_selected))
+                .add(egui::widgets::Button::new("WALL"))
                 .clicked()
             {
-                *is_last_selected = false;
-
                 if state.selected_anchors.len() >= 2 {
                     let a = state.selected_anchors[0];
                     let b = state.selected_anchors[1];
@@ -63,17 +60,84 @@ pub fn ui_example_system(
                 }
 
             }
+
+            ui.label("Constraints");
+
+
+            // Fixed Length
+            let can_add_length_constraint = state.selected_anchors.len() == 2;
+            // TODO: check there is not already a constraint
             if ui
-                .add(egui::widgets::Button::new("Another button").selected(*is_last_selected))
+                .add_enabled(can_add_length_constraint,
+                    egui::widgets::Button::new("Fixed Length") )
                 .clicked()
             {
-                *is_last_selected = true;
+                // Fixme check if constraint is already there
+                // let a = state.selected_anchors[0];
+                // let b = state.selected_anchors[1];
+
+                // let has_constraint = floorplan.csys.con.into_iter().any(|cc|)
+
+                //println!("TODO: Add Length Constraint");
+                floorplan.csys.add_constraint_fixed_len(
+                    state.selected_anchors[0], state.selected_anchors[1], None );
             }
+
+            // Parallel walls
+            let can_add_parallel_constraint = state.selected_walls.len() == 2;
+            // TODO: check there is not already a constraint
+            if ui
+                .add_enabled(can_add_parallel_constraint,
+                    egui::widgets::Button::new("Parallel") )
+                .clicked()
+            {
+
+                let wall_a = floorplan.walls[ state.selected_walls[0] ];
+                let wall_b = floorplan.walls[ state.selected_walls[1] ];
+
+                let a = wall_a.anchor_a;
+                let b = wall_a.anchor_b;
+
+                let mut c = wall_b.anchor_a;
+                let mut d = wall_b.anchor_b;
+
+                // see if AB -> CD or AB -> DC start off closer to parallel
+                let ab = (floorplan.csys.anchors[b].p - floorplan.csys.anchors[a].p).normalize();
+                let cd = (floorplan.csys.anchors[d].p - floorplan.csys.anchors[c].p).normalize();
+                if ab.dot( cd ) < 0.0 {
+                    (d, c) = (c, d);
+                }
+                //println!("AB dot CD is {}", dot );
+
+                floorplan.csys.add_constraint_parallel( a,b,c,d );
+            }
+
+            // Fixed Angle
+            let can_add_angle_constraint = state.selected_anchors.len() == 3;
+            // TODO: check there is not already a constraint
+            if ui
+                .add_enabled(can_add_parallel_constraint,
+                    egui::widgets::Button::new("Angle") )
+                .clicked()
+            {
+                // fixme: don't depend on selection order here
+                let a = state.selected_anchors[0];
+                let b = state.selected_anchors[1];
+                let c = state.selected_anchors[2];
+
+                floorplan.csys.add_constraint_angle( a,b,c,None);
+            }
+
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
         .rect
         .width();
+
+        // ============================================
+        // Show selected items
+        // ============================================
+
     // occupied_screen_space.right = egui::SidePanel::right("right_panel")
     //     .resizable(true)
     //     .show(ctx, |ui| {

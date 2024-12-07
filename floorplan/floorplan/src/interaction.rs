@@ -105,9 +105,10 @@ pub fn mouse_button_events(
                 }
 
                 // to keep things simple, a maximum of 2 anchors may be selected
-                while state.selected_anchors.len() > 2 {
-                    state.selected_anchors.remove( 0 );
-                }
+                // nope not anymore
+                // while state.selected_anchors.len() > 2 {
+                //     state.selected_anchors.remove( 0 );
+                // }
 
             }
 
@@ -126,17 +127,16 @@ pub fn update_selection (
 
     // Update selected wall, if two anchors of a wall are selected,
     // then we consider the wall to be selected
-    let mut sel_wall = None;
-    if state.selected_anchors.len() == 2 {
-        let a = state.selected_anchors[0];
-        let b = state.selected_anchors[1];
+    state.selected_walls.clear();
+    if state.selected_anchors.len() >= 2 {
         for (ndx, wall) in floorplan.walls.iter().enumerate() {
-            if ( (wall.anchor_a == a) && (wall.anchor_b == b) ) ||
-               ( (wall.anchor_b == a) && (wall.anchor_a == b) ) {
-                sel_wall = Some(ndx);
-                break;
-            }
+
+            if (state.selected_anchors.contains( &wall.anchor_a )) &&
+               (state.selected_anchors.contains( &wall.anchor_b )) {
+                // both wall anchors are selected, so the whole wall is selected
+                state.selected_walls.push( ndx );
+               }
+
         }
     }
-    state.selected_wall = sel_wall;
 }

@@ -60,9 +60,10 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
         };
 
         //let line_stroke_color = peniko::Color::new([0.5373, 0.7059, 0.9804, 1.]);
-        let wall_col = match state.selected_wall {
-            Some( wall_ndx) if wall_ndx == ndx => peniko::Color::LIME_GREEN,
-            _ => peniko::Color::WHITE
+        let wall_col = if state.selected_walls.contains( &ndx ) {
+            peniko::Color::LIME_GREEN
+        } else {
+            peniko::Color::WHITE
         };
 
         scene.stroke(&stroke, kurbo::Affine::IDENTITY, wall_col, None, &line);

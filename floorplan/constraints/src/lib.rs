@@ -214,8 +214,8 @@ impl ParallelConstraint {
             b1.p = b1.p.rotate_around_point( ctr1, ang );
 
             let ctr2 = (a2.p + b2.p) * 0.5;
-            a2.p = a2.p.rotate_around_point( ctr1, -ang );
-            b2.p = b2.p.rotate_around_point( ctr1, -ang );
+            a2.p = a2.p.rotate_around_point( ctr2, -ang );
+            b2.p = b2.p.rotate_around_point( ctr2, -ang );
     }
 }
 
