@@ -63,7 +63,6 @@ fn main() {
         .add_systems( Update, update_constraints )
         .add_systems( Update, interaction::cursor_events )
         .add_systems( Update, interaction::mouse_button_events )
-        .add_systems( Update, interaction::update_selection )
         //.add_systems(Update, update_camera_transform_system)
         .run();
 }

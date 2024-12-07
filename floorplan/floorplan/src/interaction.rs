@@ -1,3 +1,5 @@
+use core::f32;
+
 use bevy::{prelude::* };
 use bevy::input::mouse::MouseButtonInput;
 
@@ -20,6 +22,12 @@ pub fn cursor_events(
         let Some(world_pos) = cam.viewport_to_world_2d( cam_transform, ev.position ) else {
             return
         };
+
+        // Somewhat hacky way to ignore egui_events.
+        state.egui_active = ev.position.x < state.left_panel;
+        if state.egui_active {
+            return;
+        }
 
         // update the world cursor
         state.world_cursor = world_pos;
@@ -56,7 +64,8 @@ pub fn cursor_events(
                };
             }
 
-            floorplan::InteractionMode::Select => { }
+            floorplan::InteractionMode::SelectAnchors => { }
+            floorplan::InteractionMode::SelectWalls => { }
         }
 
 
@@ -74,69 +83,93 @@ pub fn mouse_button_events(
 ) {
     use bevy::input::ButtonState;
 
+    if (state.egui_active) {
+        return;
+    }
+
 
     for ev in mousebtn_evr.read() {
 
-
         match ev.state {
             ButtonState::Pressed => {
-                println!("Mouse button press: {:?}", ev.button);
+                //println!("Mouse button press: {:?}", ev.button);
 
-                // tmp: figure out better interaction
+                // tmp: figure out better interaction for creating anchors
                 if ev.button == MouseButton::Right {
 
                     let new_anc = floorplan.csys.add_anchor( state.world_cursor );
                     state.selected_anchors.push( new_anc );
                 }
 
-                if (ev.button == MouseButton::Left) && (state.mode == floorplan::InteractionMode::Select) {
 
-                    if let Some(hover_anchor) = state.hover_anchor {
-                        // toggle selected
-                        if state.selected_anchors.contains( &hover_anchor ) {
+                if ev.button == MouseButton::Left {
 
-                            // Remove hover_anchor from state.selected_anchors
-                            state.selected_anchors.retain(|x| *x != hover_anchor );
+                    let mut did_select = false;
 
-                        } else {
-                            state.selected_anchors.push( hover_anchor );
+                    if state.mode == floorplan::InteractionMode::SelectAnchors {
+
+                        if let Some(hover_anchor) = state.hover_anchor {
+                            did_select = true;
+
+                            // toggle selected
+                            if state.selected_anchors.contains( &hover_anchor ) {
+
+                                // Remove hover_anchor from state.selected_anchors
+                                state.selected_anchors.retain(|x| *x != hover_anchor );
+
+                            } else {
+                                state.selected_anchors.push( hover_anchor );
+                            }
+                        }
+
+                        if !did_select {
+                            state.selected_anchors.clear();
+                        }
+                    }
+
+                    if state.mode == floorplan::InteractionMode::SelectWalls {
+
+
+                        let mut did_select = false;
+
+                        let mut best_d = f32::MAX;
+                        let mut closest_wall = None;
+                        for i in 0..floorplan.walls.len() {
+
+                            let d = floorplan.distance_to_wall( i, state.world_cursor );
+                            if (d < 5.0) && (d < best_d) {
+                                best_d = d;
+                                closest_wall = Some( i )
+                            }
+                        }
+
+                        if let Some(closest_wall) = closest_wall {
+
+                            did_select = true;
+
+                            // toggle selected
+                            if state.selected_walls.contains( &closest_wall ) {
+
+                                // Remove hover_anchor from state.selected_walls
+                                state.selected_walls.retain(|x| *x != closest_wall );
+
+                            } else {
+                                state.selected_walls.push( closest_wall );
+                            }
+                        }
+
+                        if !did_select {
+                            state.selected_walls.clear();
                         }
                     }
                 }
-
-                // to keep things simple, a maximum of 2 anchors may be selected
-                // nope not anymore
-                // while state.selected_anchors.len() > 2 {
-                //     state.selected_anchors.remove( 0 );
-                // }
 
             }
 
 
             ButtonState::Released => {
-                println!("Mouse button release: {:?}", ev.button);
+                // println!("Mouse button release: {:?}", ev.button);
             }
-        }
-    }
-}
-
-pub fn update_selection (
-    floorplan : Res<floorplan::Floorplan>,
-    mut state : ResMut<floorplan::InteractionState>,
-) {
-
-    // Update selected wall, if two anchors of a wall are selected,
-    // then we consider the wall to be selected
-    state.selected_walls.clear();
-    if state.selected_anchors.len() >= 2 {
-        for (ndx, wall) in floorplan.walls.iter().enumerate() {
-
-            if (state.selected_anchors.contains( &wall.anchor_a )) &&
-               (state.selected_anchors.contains( &wall.anchor_b )) {
-                // both wall anchors are selected, so the whole wall is selected
-                state.selected_walls.push( ndx );
-               }
-
         }
     }
 }

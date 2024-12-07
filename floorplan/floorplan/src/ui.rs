@@ -18,13 +18,13 @@ use super::floorplan;
 
 pub fn ui_example_system(
     mut contexts: EguiContexts,
-    mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
+    //mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
     mut floorplan: ResMut<floorplan::Floorplan>,
     mut state: ResMut<floorplan::InteractionState>,
 ) {
     let ctx = contexts.ctx_mut();
 
-    occupied_screen_space.left = egui::SidePanel::left("left_panel")
+    state.left_panel = egui::SidePanel::left("left_panel")
         .resizable(true)
         .show(ctx, |ui| {
 
@@ -39,13 +39,22 @@ pub fn ui_example_system(
                 state.mode = floorplan::InteractionMode::Adjust;
             }
 
-            // Mode button Select
+            // Mode button Select Walls
             if ui
-                .add(egui::widgets::Button::new("Select")
-                .selected( state.mode == floorplan::InteractionMode::Select ))
+                .add(egui::widgets::Button::new("Select Walls")
+                .selected( state.mode == floorplan::InteractionMode::SelectWalls ))
                 .clicked()
             {
-                state.mode = floorplan::InteractionMode::Select;
+                state.mode = floorplan::InteractionMode::SelectWalls;
+            }
+
+            // Mode button Select Anchors
+            if ui
+                .add(egui::widgets::Button::new("Select Anchors")
+                .selected( state.mode == floorplan::InteractionMode::SelectAnchors ))
+                .clicked()
+            {
+                state.mode = floorplan::InteractionMode::SelectAnchors;
             }
 
             ui.label("Create");
@@ -65,22 +74,32 @@ pub fn ui_example_system(
 
 
             // Fixed Length
-            let can_add_length_constraint = state.selected_anchors.len() == 2;
+            //let can_add_length_constraint = state.selected_anchors.len() == 2;
+
+            let can_add_length_constraint = match state.mode {
+                floorplan::InteractionMode::SelectAnchors => state.selected_anchors.len() == 2,
+                floorplan::InteractionMode::SelectWalls => state.selected_walls.len() == 1,
+                _ => false,
+            };
+
             // TODO: check there is not already a constraint
             if ui
                 .add_enabled(can_add_length_constraint,
                     egui::widgets::Button::new("Fixed Length") )
                 .clicked()
             {
+                println!("Create Fixed Len constraint pressed");
+
                 // Fixme check if constraint is already there
-                // let a = state.selected_anchors[0];
-                // let b = state.selected_anchors[1];
+                if state.mode == floorplan::InteractionMode::SelectAnchors
+                {
+                    floorplan.csys.add_constraint_fixed_len(
+                        state.selected_anchors[0], state.selected_anchors[1], None );
 
-                // let has_constraint = floorplan.csys.con.into_iter().any(|cc|)
-
-                //println!("TODO: Add Length Constraint");
-                floorplan.csys.add_constraint_fixed_len(
-                    state.selected_anchors[0], state.selected_anchors[1], None );
+                } else {
+                    let wall = floorplan.walls[ state.selected_walls[0] ];
+                    floorplan.csys.add_constraint_fixed_len( wall.anchor_a, wall.anchor_b, None );
+                }
             }
 
             // Parallel walls
@@ -156,13 +175,10 @@ pub fn ui_example_system(
     //     .response
     //     .rect
     //     .height();
-    occupied_screen_space.bottom = egui::TopBottomPanel::bottom("status_bar")
+    egui::TopBottomPanel::bottom("status_bar")
         .resizable(false)
         .show(ctx, |ui| {
             ui.label("Status Bar");
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
-        })
-        .response
-        .rect
-        .height();
+        });
 }

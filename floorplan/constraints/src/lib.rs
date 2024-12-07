@@ -21,15 +21,11 @@ pub struct AnchorPoint
 pub struct ConstraintSystem
 {
     pub anchors : Vec<AnchorPoint>,
-    constraints : Vec<Constraint>,
+
+    // these don't need to be pub, (and probably shouldn't be),
+    // but I need to access them to draw the constraints.
+    pub constraints : Vec<Constraint>,
 }
-
-// impl Default for ConstraintSystem {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }
-
 
 
 
@@ -51,6 +47,8 @@ impl ConstraintSystem
 
     // If target_len is none, will use the current length between the anchors
     pub fn add_constraint_fixed_len( &mut self, a : usize, b : usize, target_len : Option<f32> ) {
+
+        println!("Add constraint fixed len {} {} -- {:?}", a, b, target_len );
 
         let target_len = match target_len {
             Some( len ) => len,
@@ -82,7 +80,7 @@ impl ConstraintSystem
             }
         };
 
-        println!("Target angle {}", target_ang.to_degrees() );
+        // println!("Target angle {}", target_ang.to_degrees() );
 
         self.constraints.push( Constraint::Angle( AngleConstraint { anc_a : a, anc_b : b, anc_c : c, target_angle : target_ang }));
     }
@@ -101,7 +99,7 @@ impl ConstraintSystem
             for cons in self.constraints.iter() {
 
                 match cons {
-                    Constraint::DummyConstraint => {}
+                    //Constraint::DummyConstraint => {}
                     Constraint::FixedLength( fixed_len ) => {
 
                         // note: could use split_at_mut here to get two slices of self.anchors but
@@ -146,10 +144,10 @@ impl ConstraintSystem
 
 // ====== [ FixedLengthConstraint ]==============================
 // Constrains AB to be the length target_len
-struct FixedLengthConstraint {
-    anc_a : usize,
-    anc_b : usize,
-    target_len : f32,
+pub struct FixedLengthConstraint {
+    pub anc_a : usize,
+    pub anc_b : usize,
+    pub target_len : f32,
 }
 
 impl FixedLengthConstraint {
@@ -187,11 +185,11 @@ impl Vec2RotationHelpers for Vec2 {
 
 // ====== [ Parallel Constraint ]==============================
 // Constrains AB to be parallel to CD
-struct ParallelConstraint {
-    anc_a : usize,
-    anc_b : usize,
-    anc_c : usize,
-    anc_d : usize,
+pub struct ParallelConstraint {
+    pub anc_a : usize,
+    pub anc_b : usize,
+    pub anc_c : usize,
+    pub anc_d : usize,
 }
 
 impl ParallelConstraint {
@@ -221,11 +219,11 @@ impl ParallelConstraint {
 
 // ====== [ Angle Constraint ]==============================
 // Constrains the angle ABC to be a target angle
-struct AngleConstraint {
-    anc_a : usize,
-    anc_b : usize,
-    anc_c : usize,
-    target_angle : f32, // in radians
+pub struct AngleConstraint {
+    pub anc_a : usize,
+    pub anc_b : usize,
+    pub anc_c : usize,
+    pub target_angle : f32, // in radians
 }
 
 impl AngleConstraint {
@@ -256,31 +254,9 @@ impl AngleConstraint {
 
 // ============================================
 
-enum Constraint {
-    DummyConstraint,
+pub enum Constraint {
+    //DummyConstraint,
     FixedLength( FixedLengthConstraint ),
     Parallel( ParallelConstraint ),
     Angle( AngleConstraint ),
-}
-
-
-// ============================================
-
-pub fn add_vec2( left : Vec2, right: Vec2 ) -> Vec2 {
-    return left + right;
-}
-
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
 }

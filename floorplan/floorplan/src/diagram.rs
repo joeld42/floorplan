@@ -1,6 +1,8 @@
 use bevy::{prelude::* };
 use bevy_vello::{ prelude::* };
 
+use constraints::{ Constraint };
+
 use super::floorplan;
 
 // =============================================================
@@ -91,6 +93,40 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
             None,
             &kurbo::Circle::new( anc.p.diagp(), radius ),
         );
+    }
+
+    // Draw constraints
+    let stroke_cons = kurbo::Stroke::new(1.0);
+    for cons in floorplan.csys.constraints.iter() {
+
+        match cons {
+            Constraint::FixedLength( fixed_len ) => {
+
+                let pa = floorplan.csys.anchors[ fixed_len.anc_a ].p;
+                let pb = floorplan.csys.anchors[ fixed_len.anc_b ].p;
+
+                match floorplan.find_wall( fixed_len.anc_a, fixed_len.anc_b ) {
+                    Some(wall) => {
+
+                        let line = kurbo::Line::new( pa.diagp(), pb.diagp() );
+                        scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
+                            peniko::Color::RED, None, &line);
+
+                    }
+                    None => {
+                        let line = kurbo::Line::new( pa.diagp(), pb.diagp() );
+                        scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
+                            peniko::Color::CORAL, None, &line);
+                    }
+                }
+            }
+
+            Constraint::Parallel( _parallel ) => {
+            }
+
+            Constraint::Angle( _angle ) => {
+            }
+        }
 
     }
 
