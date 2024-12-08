@@ -115,7 +115,7 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
     }
 
     // Draw constraints
-    let stroke_cons = kurbo::Stroke::new(1.0);
+    let stroke_cons = kurbo::Stroke::new(2.0);
     for cons in floorplan.csys.constraints.iter() {
 
         match cons {
@@ -143,7 +143,24 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
             Constraint::Parallel( _parallel ) => {
             }
 
-            Constraint::Angle( _angle ) => {
+            Constraint::Angle( angle ) => {
+
+                let pa = floorplan.csys.anchors[ angle.anc_a ].p;
+                let pb = floorplan.csys.anchors[ angle.anc_b ].p;
+                let pc = floorplan.csys.anchors[ angle.anc_c ].p;
+
+                let ba = (pa - pb).normalize() * 15.0;
+                let bc = (pc - pb).normalize() * 15.0;
+
+                let p2 = pb + ba + bc;
+                let line = kurbo::Line::new( (pb + ba).diagp(), p2.diagp() );
+                scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
+                            peniko::Color::RED, None, &line);
+
+                let line = kurbo::Line::new( (pb + bc).diagp(), p2.diagp() );
+                scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
+                            peniko::Color::RED, None, &line);
+
             }
         }
 

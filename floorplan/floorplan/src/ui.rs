@@ -139,7 +139,7 @@ pub fn ui_example_system(
             let can_add_angle_constraint = state.selected_anchors.len() == 3;
             // TODO: check there is not already a constraint
             if ui
-                .add_enabled(can_add_parallel_constraint,
+                .add_enabled(can_add_angle_constraint,
                     egui::widgets::Button::new("Angle") )
                 .clicked()
             {
