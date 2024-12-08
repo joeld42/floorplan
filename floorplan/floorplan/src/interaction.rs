@@ -1,9 +1,12 @@
 use core::f32;
 
+use bevy::ecs::world;
 use bevy::{prelude::* };
 use bevy::input::mouse::MouseButtonInput;
 
 use super::floorplan;
+
+use constraints::{ PinMode };
 
 // This file contains interaction logic for dragging/selecting
 
@@ -71,7 +74,16 @@ pub fn cursor_events(
 
         // Adjust drag anchor
         if let Some(drag_anchor) = state.drag_anchor {
-            floorplan.csys.anchors[drag_anchor].p = world_pos;
+            let pin = floorplan.csys.anchors[drag_anchor].pin;
+            if pin != PinMode::PinXY {
+                let p = floorplan.csys.anchors[drag_anchor].p;
+                floorplan.csys.anchors[drag_anchor].p = match pin {
+                    PinMode::Unpinned => world_pos,
+                    PinMode::PinX => Vec2::new( p.x, world_pos.y ),
+                    PinMode::PinY => Vec2::new( world_pos.x, p.y  ),
+                    _ => unreachable!(), // Don't try to drag fully pinned anchors
+                }
+            }
         }
     }
 }

@@ -1,7 +1,7 @@
 use bevy::{prelude::* };
 use bevy_vello::{ prelude::* };
 
-use constraints::{ Constraint };
+use constraints::{ Constraint, PinMode };
 
 use super::floorplan;
 
@@ -85,6 +85,25 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
         } else {
             peniko::Color::GOLDENROD
         };
+
+        // Draw crosshairs for pinned anchors
+        if anc.pin == PinMode::PinY || anc.pin == PinMode::PinXY {
+            let pin_offs_x = Vec2::new( 10.0, 0.0);
+            let line = kurbo::Line::new(
+                (anc.p - pin_offs_x).diagp(),
+                (anc.p + pin_offs_x).diagp() );
+
+            scene.stroke(&stroke_int, kurbo::Affine::IDENTITY, acolor, None, &line);
+        }
+
+        if anc.pin == PinMode::PinX || anc.pin == PinMode::PinXY {
+            let pin_offs_y = Vec2::new( 0.0, 10.0);
+            let line = kurbo::Line::new(
+                (anc.p - pin_offs_y).diagp(),
+                (anc.p + pin_offs_y).diagp() );
+
+            scene.stroke(&stroke_int, kurbo::Affine::IDENTITY, acolor, None, &line);
+        }
 
         scene.fill(
             peniko::Fill::NonZero,

@@ -1,7 +1,8 @@
 pub use glam::{ Vec2 };
 
 
-#[derive(Copy,Clone)]
+// TODO make this a bitfield?
+#[derive(Copy,Clone,PartialEq)]
 pub enum PinMode
 {
     Unpinned,
@@ -14,6 +15,7 @@ pub enum PinMode
 pub struct AnchorPoint
 {
     pub p : Vec2,
+    pub p_orig : Vec2,
     pub pin : PinMode,
 }
 
@@ -41,7 +43,7 @@ impl ConstraintSystem
     // todo: way to wrap index so it's typesafe?
     pub fn add_anchor( &mut self, p : Vec2 ) -> usize {
         let index = self.anchors.len();
-        self.anchors.push( AnchorPoint { p : p, pin : PinMode::Unpinned });
+        self.anchors.push( AnchorPoint { p : p, p_orig : p, pin : PinMode::Unpinned });
         index
     }
 
@@ -109,6 +111,11 @@ impl ConstraintSystem
 
         for _substep in 0..steps {
 
+            // store orig pos
+            for anc in self.anchors.iter_mut() {
+                anc.p_orig = anc.p;
+            }
+
             for cons in self.constraints.iter() {
 
                 match cons {
@@ -150,6 +157,21 @@ impl ConstraintSystem
                     }
                 }
             }
+
+            // Apply pins
+            for anc in self.anchors.iter_mut() {
+                if anc.pin == PinMode::Unpinned {
+                    continue;
+                }
+
+                anc.p = match anc.pin {
+                    PinMode::PinX => Vec2::new( anc.p_orig.x, anc.p.y ),
+                    PinMode::PinY => Vec2::new( anc.p.x, anc.p_orig.y ),
+                    PinMode::PinXY => anc.p_orig,
+                    _ => unreachable!()
+                };
+            }
+
         }
     }
 

@@ -6,7 +6,7 @@ use bevy_egui::{
     //EguiPlugin
     };
 
-use constraints::{ Constraint };
+use constraints::{ Constraint, AnchorPoint, PinMode };
 
 #[derive(Default, Resource)]
 pub struct OccupiedScreenSpace {
@@ -151,12 +151,19 @@ pub fn ui_example_system(
                 floorplan.csys.add_constraint_angle( a,b,c,None);
             }
 
+            // Show panel for all selected anchors
+            if state.mode == floorplan::InteractionMode::SelectAnchors {
+                for (ndx, anc) in floorplan.csys.anchors.iter_mut().enumerate() {
+                    if state.selected_anchors.contains( &ndx ) {
+                        edit_anchor_panel( ui, anc );
+                    }
+                }
+            }
 
             // Show panel for all constraints on the currently selected stuff
             for cons in floorplan.csys.constraints.iter_mut() {
 
                 // TODO: only show the constraints that have anchors or walls selected
-
                 edit_constraint_pane( ui,  cons );
             }
 
@@ -227,13 +234,35 @@ pub fn ui_example_system(
         });
 }
 
+fn edit_anchor_panel( ui: &mut egui::Ui, anchor : &mut AnchorPoint )
+{
+    ui.add(egui::Separator::default());
+
+    let mut pin_x = (anchor.pin==PinMode::PinX) || (anchor.pin==PinMode::PinXY);
+    let mut pin_y = (anchor.pin==PinMode::PinY) || (anchor.pin==PinMode::PinXY);
+    ui.horizontal(|ui| {
+        ui.checkbox(&mut pin_x, "Pin X");
+        ui.checkbox(&mut pin_y, "Pin Y");
+    });
+
+    anchor.pin = if pin_x && pin_y {
+        PinMode::PinXY
+    } else if pin_x {
+        PinMode::PinX
+    } else if pin_y {
+        PinMode::PinY
+    } else {
+        PinMode::Unpinned
+    };
+}
+
 fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint )
 {
     ui.add(egui::Separator::default());
 
     match constraint {
         Constraint::FixedLength( cc_fixed ) => {
-            ui.label( "Fixed Length:");
+            ui.label( "Fixed Length:" );
             if ui
                 .add(egui::Slider::new(
                     &mut cc_fixed.target_len,
