@@ -68,33 +68,25 @@ impl Floorplan
             (wall.anchor_a == b && wall.anchor_b == a)
         }).cloned()
     }
-}
 
-
-#[derive(Copy, Clone,PartialEq)]
-pub enum InteractionMode {
-    Adjust,
-    SelectAnchors,
-    SelectWalls,
-}
-impl Default for InteractionMode {
-    fn default() -> Self {
-        InteractionMode::Adjust
+    // Finds the closest anchor within 'threshold' distance
+    pub fn find_anchor( &self, pos : Vec2, threshold : f32 ) -> Option<usize> {
+        let mut best_d = f32::MAX;
+        let mut closest_anc = None;
+        for (ndx, anc) in self.csys.anchors.iter().enumerate() {
+            let d = anc.p.distance(pos);
+            if (d < threshold) && (d < best_d) {
+                closest_anc = Some(ndx);
+                best_d = d;
+            }
+        }
+        // result
+        closest_anc
     }
 }
 
-#[derive(Resource, Default)]
-pub struct InteractionState {
-    pub mode : InteractionMode,
-    pub world_cursor : Vec2,
-    pub hover_anchor : Option<usize>,
-    pub drag_anchor : Option<usize>,
 
-    pub selected_anchors : Vec<usize>,
-    pub selected_walls : Vec<usize>,
 
-    pub left_panel: f32,
-    pub egui_active : bool,
-}
+
 
 

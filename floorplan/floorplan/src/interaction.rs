@@ -10,13 +10,61 @@ use constraints::{ PinMode };
 
 // This file contains interaction logic for dragging/selecting
 
+#[derive(Copy, Clone,PartialEq)]
+pub enum InteractionMode {
+    Adjust,
+    Create,
+    SelectAnchors,
+    SelectWalls,
+}
+impl Default for InteractionMode {
+    fn default() -> Self {
+        InteractionMode::Adjust
+    }
+}
+
+#[derive(Default)]
+pub struct CreateModeInteractionState {
+    // for create mode
+    pub is_dragging: bool,
+    pub drag_start: Vec2,
+    pub drag_end: Vec2,
+    pub anc_start : Option<usize>,
+    pub anc_end : Option<usize>,
+}
+
+#[derive(Resource, Default)]
+pub struct InteractionState {
+    pub mode : InteractionMode,
+    pub world_cursor : Vec2,
+    pub hover_anchor : Option<usize>,
+    pub drag_anchor : Option<usize>,
+
+    pub create : CreateModeInteractionState,
+
+    pub selected_anchors : Vec<usize>,
+    pub selected_walls : Vec<usize>,
+
+    pub left_panel: f32,
+    pub egui_active : bool,
+
+    // pub fn clear_selection( &mut self ) {
+    //     self.hover_anchor = None;
+    //     self.drag_anchor = None;
+    //     self.selected_anchors.clear();
+    //     self.selected_walls.clear();
+    // }
+}
+
+
+
 pub fn cursor_events(
     mut evr_cursor: EventReader<CursorMoved>,
     buttons: Res<ButtonInput<MouseButton>>,
     q_camera: Query<(&Camera, &Camera2d, &GlobalTransform)>,
     mut q_pancam : Query<&mut bevy_pancam::PanCam>,
     mut floorplan : ResMut<floorplan::Floorplan>,
-    mut state : ResMut<floorplan::InteractionState>,
+    mut state : ResMut<InteractionState>,
 ) {
     for ev in evr_cursor.read() {
 
@@ -41,6 +89,7 @@ pub fn cursor_events(
         // );
 
         // TODO: screen space dist instead of world space?
+
         if state.drag_anchor.is_none() {
 
             // update the hover anchor if we're not currently dragging
@@ -51,15 +100,23 @@ pub fn cursor_events(
                 }
             }
             state.hover_anchor = hover_anc;
-
-            // disable camera panning if hovering
-            let mut pancam = q_pancam.single_mut();
-            pancam.enabled = state.hover_anchor.is_none();
-
         }
 
+        // disable camera panning if hovering (fixme: this is probably not
+        // the best place to handle this)
+        let mut pancam = q_pancam.single_mut();
+        //pancam.enabled = state.hover_anchor.is_none();
+
+        pancam.enabled =  match state.mode {
+            InteractionMode::Adjust => {
+                state.hover_anchor.is_none()
+            }
+            _ => { false}
+        };
+
+
         match state.mode {
-            floorplan::InteractionMode::Adjust => {
+            InteractionMode::Adjust => {
                 state.drag_anchor = if buttons.pressed( MouseButton::Left ) {
                     state.hover_anchor
                } else {
@@ -67,8 +124,10 @@ pub fn cursor_events(
                };
             }
 
-            floorplan::InteractionMode::SelectAnchors => { }
-            floorplan::InteractionMode::SelectWalls => { }
+            InteractionMode::Create => { }
+
+            InteractionMode::SelectAnchors => { }
+            InteractionMode::SelectWalls => { }
         }
 
 
@@ -85,13 +144,20 @@ pub fn cursor_events(
                 }
             }
         }
+
+        // Adjust create-drag ghost line
+        if state.mode == InteractionMode::Create && state.create.is_dragging {
+            state.create.drag_end = world_pos;
+            state.create.anc_end = floorplan.find_anchor( state.create.drag_end, 5.0);
+        }
+
     }
 }
 
 pub fn mouse_button_events(
     mut floorplan : ResMut<floorplan::Floorplan>,
     mut mousebtn_evr: EventReader<MouseButtonInput>,
-    mut state : ResMut<floorplan::InteractionState>,
+    mut state : ResMut<InteractionState>,
 ) {
     use bevy::input::ButtonState;
 
@@ -109,8 +175,10 @@ pub fn mouse_button_events(
                 // tmp: figure out better interaction for creating anchors
                 if ev.button == MouseButton::Right {
 
-                    let new_anc = floorplan.csys.add_anchor( state.world_cursor );
-                    state.selected_anchors.push( new_anc );
+                    if state.mode == InteractionMode::Create {
+                        let new_anc = floorplan.csys.add_anchor( state.world_cursor );
+                        //state.selected_anchors.push( new_anc );
+                    }
                 }
 
 
@@ -118,7 +186,17 @@ pub fn mouse_button_events(
 
                     let mut did_select = false;
 
-                    if state.mode == floorplan::InteractionMode::SelectAnchors {
+                    if state.mode == InteractionMode::Create {
+
+                        state.create.is_dragging = true;
+                        state.create.drag_start = state.world_cursor;
+                        state.create.drag_end = state.world_cursor;
+                        state.create.anc_start = floorplan.find_anchor( state.create.drag_start, 5.0);
+                        state.create.anc_end = state.create.anc_start;
+                    }
+
+
+                    if state.mode == InteractionMode::SelectAnchors {
 
                         if let Some(hover_anchor) = state.hover_anchor {
                             did_select = true;
@@ -139,7 +217,7 @@ pub fn mouse_button_events(
                         }
                     }
 
-                    if state.mode == floorplan::InteractionMode::SelectWalls {
+                    if state.mode == InteractionMode::SelectWalls {
 
 
                         let mut did_select = false;
@@ -181,7 +259,30 @@ pub fn mouse_button_events(
 
             ButtonState::Released => {
                 // println!("Mouse button release: {:?}", ev.button);
+                if state.mode == InteractionMode::Create {
+
+                    state.create.is_dragging = false;
+                    state.create.drag_end = state.world_cursor;
+
+                    state.create.anc_end = floorplan.find_anchor( state.create.drag_end, 5.0);
+
+                    // Create the wall
+                    create_wall( &mut floorplan, &state.create );
+                }
             }
         }
     }
+}
+
+fn create_wall( floorplan : &mut floorplan::Floorplan, create : &CreateModeInteractionState )
+{
+    // TODO: create wall here
+    //println!("Create wall {:?} {:?}", create.anc_start, create.anc_end  );
+
+    // Use or create an anchor for A
+    let anc_start = create.anc_start.unwrap_or_else(|| floorplan.csys.add_anchor( create.drag_start ) );
+    let anc_end = create.anc_end.unwrap_or_else(|| floorplan.csys.add_anchor( create.drag_end ) );
+
+    floorplan.walls.push( floorplan::Wall { anchor_a : anc_start, anchor_b : anc_end, ..default() });
+
 }

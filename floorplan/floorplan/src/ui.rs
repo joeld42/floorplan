@@ -8,21 +8,13 @@ use bevy_egui::{
 
 use constraints::{ Constraint, AnchorPoint, PinMode };
 
-#[derive(Default, Resource)]
-pub struct OccupiedScreenSpace {
-    pub left: f32,
-    // pub top: f32,
-    // pub right: f32,
-    pub bottom: f32,
-}
-
 use super::floorplan;
+use super::interaction::{InteractionMode, InteractionState};
 
 pub fn ui_example_system(
     mut contexts: EguiContexts,
-    //mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
     mut floorplan: ResMut<floorplan::Floorplan>,
-    mut state: ResMut<floorplan::InteractionState>,
+    mut state: ResMut<InteractionState>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -35,29 +27,38 @@ pub fn ui_example_system(
             // Mode button Adjust
             if ui
                 .add(egui::widgets::Button::new("Adjust")
-                .selected( state.mode == floorplan::InteractionMode::Adjust ))
+                .selected( state.mode == InteractionMode::Adjust ))
                 .clicked()
             {
-                state.mode = floorplan::InteractionMode::Adjust;
+                state.mode = InteractionMode::Adjust;
+            }
+
+            // Mode button Adjust
+            if ui
+                .add(egui::widgets::Button::new("Create")
+                .selected( state.mode == InteractionMode::Create ))
+                .clicked()
+            {
+                state.mode = InteractionMode::Create;
             }
 
             // Mode button Select Walls
             if ui
                 .add(egui::widgets::Button::new("Select Walls")
-                .selected( state.mode == floorplan::InteractionMode::SelectWalls ))
+                .selected( state.mode == InteractionMode::SelectWalls ))
                 .clicked()
             {
-                state.mode = floorplan::InteractionMode::SelectWalls;
+                state.mode = InteractionMode::SelectWalls;
                 state.selected_anchors.clear();
             }
 
             // Mode button Select Anchors
             if ui
                 .add(egui::widgets::Button::new("Select Anchors")
-                .selected( state.mode == floorplan::InteractionMode::SelectAnchors ))
+                .selected( state.mode == InteractionMode::SelectAnchors ))
                 .clicked()
             {
-                state.mode = floorplan::InteractionMode::SelectAnchors;
+                state.mode = InteractionMode::SelectAnchors;
                 state.selected_walls.clear();
             }
 
@@ -81,8 +82,8 @@ pub fn ui_example_system(
             //let can_add_length_constraint = state.selected_anchors.len() == 2;
 
             let can_add_length_constraint = match state.mode {
-                floorplan::InteractionMode::SelectAnchors => state.selected_anchors.len() == 2,
-                floorplan::InteractionMode::SelectWalls => state.selected_walls.len() == 1,
+                InteractionMode::SelectAnchors => state.selected_anchors.len() == 2,
+                InteractionMode::SelectWalls => state.selected_walls.len() == 1,
                 _ => false,
             };
 
@@ -95,7 +96,7 @@ pub fn ui_example_system(
                 println!("Create Fixed Len constraint pressed");
 
                 // Fixme check if constraint is already there
-                if state.mode == floorplan::InteractionMode::SelectAnchors
+                if state.mode == InteractionMode::SelectAnchors
                 {
                     floorplan.csys.add_constraint_fixed_len(
                         state.selected_anchors[0], state.selected_anchors[1], None );
@@ -152,7 +153,7 @@ pub fn ui_example_system(
             }
 
             // Show panel for all selected anchors
-            if state.mode == floorplan::InteractionMode::SelectAnchors {
+            if state.mode == InteractionMode::SelectAnchors {
                 for (ndx, anc) in floorplan.csys.anchors.iter_mut().enumerate() {
                     if state.selected_anchors.contains( &ndx ) {
                         edit_anchor_panel( ui, anc );

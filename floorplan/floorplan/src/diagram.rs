@@ -3,7 +3,8 @@ use bevy_vello::{ prelude::* };
 
 use constraints::{ Constraint, PinMode };
 
-use super::floorplan;
+use super::floorplan::{Floorplan, WallStyle};
+use super::interaction::{InteractionMode, InteractionState};
 
 // =============================================================
 // convert from bevy's Vec2 to vello's Point.
@@ -19,8 +20,8 @@ impl DiagramConvert for Vec2 {
 
 // =============================================================
 pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
-                    floorplan: Res<floorplan::Floorplan>,
-                    state: Res<floorplan::InteractionState>,
+                    floorplan: Res<Floorplan>,
+                    state: Res<InteractionState>,
                     //time: Res<Time>
                     ) {
     //let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
@@ -57,8 +58,8 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
 
         // match wall.style to pick stroke_int or stroke_ext
         let stroke = match wall.style {
-            floorplan::WallStyle::Interior => &stroke_int,
-            floorplan::WallStyle::Exterior => &stroke_ext,
+            WallStyle::Interior => &stroke_int,
+            WallStyle::Exterior => &stroke_ext,
         };
 
         //let line_stroke_color = peniko::Color::new([0.5373, 0.7059, 0.9804, 1.]);
@@ -162,6 +163,25 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
                             peniko::Color::RED, None, &line);
 
             }
+        }
+
+
+        // If we're dragging a new wall, draw the ghost cursor
+        if state.mode==InteractionMode::Create && state.create.is_dragging {
+
+            let start_pos = match state.create.anc_start {
+                Some(anc_ndx) => floorplan.csys.anchors[ anc_ndx ].p,
+                None => state.create.drag_start,
+            };
+
+            let end_pos = match state.create.anc_end {
+                Some(anc_ndx) => floorplan.csys.anchors[ anc_ndx ].p,
+                None => state.create.drag_end,
+            };
+
+            let line = kurbo::Line::new( start_pos.diagp(), end_pos.diagp() );
+                scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
+                            peniko::Color::CYAN, None, &line);
         }
 
     }
