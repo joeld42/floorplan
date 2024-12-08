@@ -83,7 +83,7 @@ pub fn mouse_button_events(
 ) {
     use bevy::input::ButtonState;
 
-    if (state.egui_active) {
+    if state.egui_active {
         return;
     }
 

@@ -152,34 +152,43 @@ pub fn ui_example_system(
             }
 
 
-            // Show current selection
-            ui.add(egui::Separator::default());
-            match state.mode {
-                floorplan::InteractionMode::SelectAnchors => {
-                },
-                floorplan::InteractionMode::SelectWalls => {
+            // Show panel for all constraints on the currently selected stuff
+            for cons in floorplan.csys.constraints.iter_mut() {
 
-                    if state.selected_walls.len() > 1 {
+                // TODO: only show the constraints that have anchors or walls selected
 
-                        // show a lable with how many walls selected
-                        ui.label( format!("{} walls selected", state.selected_walls.len() ));
-                    } else if state.selected_walls.len() == 1 {
-                        // See if we have a length constraint on this wall
-                        let wall = floorplan.walls[ state.selected_walls[0] ];
-                        let cons = floorplan.csys.find_constraint( wall.anchor_a, wall.anchor_b );
-
-                        match cons {
-                            Some( Constraint::FixedLength( cc_fixed ) ) => {
-                                ui.label( format!("Wall Length: {}", cc_fixed.target_len ));
-                            }
-                            _ => {}
-                        }
-
-
-                    }
-                },
-                _ => {},
+                edit_constraint_pane( ui,  cons );
             }
+
+
+            // Show current selection
+            // ui.add(egui::Separator::default());
+            // match state.mode {
+            //     floorplan::InteractionMode::SelectAnchors => {
+            //     },
+            //     floorplan::InteractionMode::SelectWalls => {
+
+            //         if state.selected_walls.len() > 1 {
+
+            //             // show a lable with how many walls selected
+            //             ui.label( format!("{} walls selected", state.selected_walls.len() ));
+            //         } else if state.selected_walls.len() == 1 {
+            //             // See if we have a length constraint on this wall
+            //             let wall = floorplan.walls[ state.selected_walls[0] ];
+            //             let cons = floorplan.csys.find_constraint( wall.anchor_a, wall.anchor_b );
+
+            //             match cons {
+            //                 Some( Constraint::FixedLength( cc_fixed ) ) => {
+            //                     ui.label( format!("Wall Length: {}", cc_fixed.target_len ));
+            //                 }
+            //                 _ => {}
+            //             }
+
+
+            //         }
+            //     },
+            //     _ => {},
+            // }
 
 
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
@@ -216,4 +225,25 @@ pub fn ui_example_system(
             ui.label("Status Bar");
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         });
+}
+
+fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint )
+{
+    ui.add(egui::Separator::default());
+
+    match constraint {
+        Constraint::FixedLength( cc_fixed ) => {
+            ui.label( "Fixed Length:");
+            if ui
+                .add(egui::Slider::new(
+                    &mut cc_fixed.target_len,
+                    0.0..=500.0,
+                ))
+                .changed()
+                {
+                    //println!( "length changed...");
+                };
+        }
+        _ => {}
+    }
 }

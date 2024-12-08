@@ -41,7 +41,7 @@ fn main() {
     floorplan.walls.push( floorplan::Wall { anchor_a : c, anchor_b : d, ..default() });
     floorplan.walls.push( floorplan::Wall { anchor_a : d, anchor_b : a, style : floorplan::WallStyle::Exterior });
 
-    //floorplan.csys.add_constraint_fixed_len( a, d, None );
+    floorplan.csys.add_constraint_fixed_len( a, d, None );
     //floorplan.csys.add_constraint_parallel( a, b, d, c );
     //floorplan.csys.add_constraint_angle( a, b, c, None );
 
