@@ -172,14 +172,6 @@ pub fn mouse_button_events(
             ButtonState::Pressed => {
                 //println!("Mouse button press: {:?}", ev.button);
 
-                // tmp: figure out better interaction for creating anchors
-                if ev.button == MouseButton::Right {
-
-                    if state.mode == InteractionMode::Create {
-                        let new_anc = floorplan.csys.add_anchor( state.world_cursor );
-                        //state.selected_anchors.push( new_anc );
-                    }
-                }
 
 
                 if ev.button == MouseButton::Left {
@@ -252,22 +244,56 @@ pub fn mouse_button_events(
                             state.selected_walls.clear();
                         }
                     }
-                }
+                } else if ev.button == MouseButton::Right {
 
+                    // Create mode, cancel dragging wall
+                    if state.mode == InteractionMode::Create {
+                        state.create.is_dragging = false;
+                    }
+                }
             }
+
+
 
 
             ButtonState::Released => {
                 // println!("Mouse button release: {:?}", ev.button);
-                if state.mode == InteractionMode::Create {
 
-                    state.create.is_dragging = false;
-                    state.create.drag_end = state.world_cursor;
 
-                    state.create.anc_end = floorplan.find_anchor( state.create.drag_end, 5.0);
+                // if ev.button == MouseButton::Right {
 
-                    // Create the wall
-                    create_wall( &mut floorplan, &state.create );
+                //     // RMB is a shortcut to create an anchor
+                //     if state.mode == InteractionMode::Create {
+                //         let _new_anc = floorplan.csys.add_anchor( state.world_cursor );
+
+                //         state.create.is_dragging = false;
+                //     }
+                // }
+                if ev.button == MouseButton::Left {
+
+                    if state.mode == InteractionMode::Create && state.create.is_dragging {
+
+                        state.create.is_dragging = false;
+                        state.create.drag_end = state.world_cursor;
+
+                        state.create.anc_end = floorplan.find_anchor( state.create.drag_end, 5.0);
+
+                        // Check minumum distance, otherwise just create an anchor
+                        if state.create.drag_start.distance( state.create.drag_end) < 10.0 {
+
+                            // just create an anchor if there isn't one there
+                            if state.create.anc_start.is_none() && state.create.anc_end.is_none() {
+                                let ctr = (state.create.drag_start + state.create.drag_end) * 0.5;
+                                println!("Create anchor {:?}", ctr );
+                                let _new_anc = floorplan.csys.add_anchor( ctr );
+                            }
+
+                        } else {
+
+                            // Create the wall
+                            create_wall( &mut floorplan, &state.create );
+                        }
+                    }
                 }
             }
         }
@@ -277,7 +303,7 @@ pub fn mouse_button_events(
 fn create_wall( floorplan : &mut floorplan::Floorplan, create : &CreateModeInteractionState )
 {
     // TODO: create wall here
-    //println!("Create wall {:?} {:?}", create.anc_start, create.anc_end  );
+    println!("Create wall {:?} {:?}", create.anc_start, create.anc_end  );
 
     // Use or create an anchor for A
     let anc_start = create.anc_start.unwrap_or_else(|| floorplan.csys.add_anchor( create.drag_start ) );
