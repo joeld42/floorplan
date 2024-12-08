@@ -109,7 +109,7 @@ impl ConstraintSystem
 
         let str = base_str / (steps as f32);
 
-        for _substep in 0..steps {
+        for substep in 0..steps {
 
             // store orig pos
             for anc in self.anchors.iter_mut() {
@@ -205,8 +205,10 @@ impl FixedLengthConstraint {
 // Rotation helpers
 pub trait Vec2RotationHelpers {
     fn rotate_around_point( &self, center : Vec2, ang_radians : f32 ) -> Vec2;
+    fn rotate_around_point_lim( &self, center : Vec2, ang_radians : f32, lim : f32 ) -> Vec2;
 }
 impl Vec2RotationHelpers for Vec2 {
+
     fn rotate_around_point( &self, center : Vec2, ang_radians : f32 ) -> Vec2 {
         let p2 = *self - center;
         let s = ang_radians.sin();
@@ -215,6 +217,19 @@ impl Vec2RotationHelpers for Vec2 {
 
         // rotated result
         center + pr
+    }
+
+    fn rotate_around_point_lim( &self, center : Vec2, ang_radians : f32, lim : f32 ) -> Vec2 {
+
+        let p2 = self.rotate_around_point( center, ang_radians);
+        if self.distance(p2) < lim {
+            p2
+        } else {
+
+            let dir = (p2 - *self).normalize();
+            *self + dir * lim
+        }
+
     }
 }
 
@@ -270,7 +285,7 @@ impl AngleConstraint {
         anc_a : &mut AnchorPoint,
         anc_b : &mut AnchorPoint,
         anc_c : &mut AnchorPoint,
-         str : f32  ) {
+         str : f32 ) {
 
 
             let ba = (anc_a.p - anc_b.p).normalize();
@@ -283,8 +298,8 @@ impl AngleConstraint {
 
             let ang = ang_diff * 0.5 * str;
 
-            anc_a.p = anc_a.p.rotate_around_point( anc_b.p, -ang );
-            anc_c.p = anc_c.p.rotate_around_point( anc_b.p, ang );
+            anc_a.p = anc_a.p.rotate_around_point_lim( anc_b.p, -ang, 0.1 );
+            anc_c.p = anc_c.p.rotate_around_point_lim( anc_b.p, ang, 0.1 );
 
     }
 }

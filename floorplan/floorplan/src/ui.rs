@@ -124,19 +124,61 @@ pub fn ui_example_system(
             }
 
             // Fixed Angle
-            let can_add_angle_constraint = state.selected_anchors.len() == 3;
+            let mut can_add_angle_constraint = state.selected_walls.len() == 2;
+
+            let mut shared_anchor =0;
+            if can_add_angle_constraint {
+
+                // make sure exactly one anchor is shared
+                let wall_a = floorplan.walls[ state.selected_walls[0] ];
+                let wall_b =floorplan.walls[ state.selected_walls[1] ];
+
+                // find the shared anchor between walls
+                shared_anchor = if wall_a.anchor_a == wall_b.anchor_a || wall_a.anchor_a == wall_b.anchor_b {
+                    wall_a.anchor_a
+                } else if wall_a.anchor_b == wall_b.anchor_a || wall_a.anchor_b == wall_b.anchor_b {
+                    wall_a.anchor_b
+                } else {
+                    can_add_angle_constraint = false;
+                    0
+                };
+            }
+
+
             // TODO: check there is not already a constraint
             if ui
                 .add_enabled(can_add_angle_constraint,
                     egui::widgets::Button::new("Angle") )
                 .clicked()
             {
-                // fixme: don't depend on selection order here
-                let a = state.selected_anchors[0];
-                let b = state.selected_anchors[1];
-                let c = state.selected_anchors[2];
+                let wall_a = floorplan.walls[ state.selected_walls[0] ];
+                let wall_b =floorplan.walls[ state.selected_walls[1] ];
 
-                floorplan.csys.add_constraint_angle( a,b,c,None);
+                let anc1 = if wall_a.anchor_a == shared_anchor {
+                    wall_a.anchor_b
+                } else {
+                    wall_a.anchor_a
+                };
+
+                let anc2 = if wall_b.anchor_a == shared_anchor {
+                    wall_b.anchor_b
+                } else {
+                    wall_b.anchor_a
+                };
+
+                let b = floorplan.csys.anchors[shared_anchor].p;
+                let b1 = (floorplan.csys.anchors[anc1].p - b).normalize();
+                let b2 = (b - floorplan.csys.anchors[anc2].p).normalize();
+                let ccw = b1.x*b2.y - b1.y*b2.x;
+                println!("b1 cross b2 is {}", ccw );
+                let (anc1,anc2) = if ccw < 0.0 {
+                    (anc2, anc1)
+                } else {
+                    (anc1, anc2)
+                };
+
+                println!("make angle constraint for {} {} {}", anc1, shared_anchor, anc2 );
+                floorplan.csys.add_constraint_angle( anc1, shared_anchor, anc2,None);
             }
 
             // Show panel for all selected anchors
@@ -249,7 +291,11 @@ fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint )
     ui.add(egui::Separator::default());
 
     match constraint {
+
         Constraint::FixedLength( cc_fixed ) => {
+
+
+
             ui.label( "Fixed Length:" );
             if ui
                 .add(egui::Slider::new(
@@ -259,6 +305,20 @@ fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint )
                 .changed()
                 {
                     //println!( "length changed...");
+                };
+        }
+        Constraint::Angle( cc_ang ) => {
+            let mut angle_deg = cc_ang.target_angle.to_degrees();
+            ui.label( "Fixed Angle:" );
+            if ui
+                .add(egui::Slider::new(
+                    &mut angle_deg,
+                    3.0..=170.0,
+                ))
+                .changed()
+                {
+                    println!( "angle changed...");
+                    cc_ang.target_angle = angle_deg.to_radians();
                 };
         }
         _ => {}

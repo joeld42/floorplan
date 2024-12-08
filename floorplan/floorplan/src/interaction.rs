@@ -302,13 +302,18 @@ pub fn mouse_button_events(
 
 fn create_wall( floorplan : &mut floorplan::Floorplan, create : &CreateModeInteractionState )
 {
-    // TODO: create wall here
-    println!("Create wall {:?} {:?}", create.anc_start, create.anc_end  );
 
     // Use or create an anchor for A
     let anc_start = create.anc_start.unwrap_or_else(|| floorplan.csys.add_anchor( create.drag_start ) );
     let anc_end = create.anc_end.unwrap_or_else(|| floorplan.csys.add_anchor( create.drag_end ) );
 
-    floorplan.walls.push( floorplan::Wall { anchor_a : anc_start, anchor_b : anc_end, ..default() });
+    // make sure wall doesn't already exist
+    let existing_wall = floorplan.find_wall(anc_start, anc_end);
+    if existing_wall.is_none() {
+        println!("Create wall {:?} {:?}", create.anc_start, create.anc_end  );
+        floorplan.walls.push( floorplan::Wall { anchor_a : anc_start, anchor_b : anc_end, ..default() });
+    } else {
+        println!("Wall already exists {} {}", anc_start, anc_end  );
+    }
 
 }
