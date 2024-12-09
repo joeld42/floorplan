@@ -21,6 +21,7 @@ pub struct PreviewGeo;
 
 #[derive(Component)]
 pub struct PreviewCamera {
+    pub preview_radius : f32,
     pub lerptime : f32,
 }
 
@@ -107,7 +108,7 @@ pub fn setup_preview (
         },
         transform: camera_transform,
         ..Default::default()
-    }, PreviewCamera { lerptime : 0.0 } ) );
+    }, PreviewCamera { preview_radius : 5.0, lerptime : 0.0 } ) );
 }
 
 
@@ -127,20 +128,20 @@ pub fn adjust_preview_camera(
 
     transform.translation =
         Vec3::new(-20.0, 120.0, 50.0).lerp(
-            Vec3::new( -20.0, 25.0, 50.0 ),
+            Vec3::new( -pcam.preview_radius * 2.0, 25.0, pcam.preview_radius * 2.0 + 10.0 ),
             pcam.lerptime / PREVIEW_TIME
         )
 }
 
 
 pub fn rebuild_floorplan(
-    asset_server: Res<AssetServer>,
     walls: Res<WallSet>,
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut ev_rebuild: EventReader<RebuildFloorplan>,
     despawn_q: Query<Entity, With<PreviewGeo>>,
     floorplan : Res<floorplan::Floorplan>,
+    mut camera_q: Query<&mut PreviewCamera>,
 ) {
     for ev in ev_rebuild.read() {
         println!("Need to rebuild floorplan...");
@@ -181,6 +182,7 @@ pub fn rebuild_floorplan(
 
             //println!("Num segments {}", num );
 
+            let mut radius : f32 = 0.0;
             for i in 0..num {
 
                 // messy random choice here, favor flat walls to "special" decorations
@@ -205,8 +207,13 @@ pub fn rebuild_floorplan(
                     ..default()
                 }, PreviewGeo ));
 
+                radius = radius.max( p.length() );
+
                 println!("Spawn {}/{} at {:?}", i, num, p );
             }
+            println!("Radius is {}", radius );
+            let mut pcam = camera_q.single_mut();
+            pcam.preview_radius = radius.min( 5.0 );
         }
     }
 }
