@@ -53,6 +53,7 @@ fn main() {
         // preview systems
         .add_systems(Startup, preview::setup_preview)
         .add_systems( Update, preview::rebuild_floorplan )
+        .add_systems( Update, preview::adjust_preview_camera )
         .add_event::<preview::RebuildFloorplan>()
 
         .run();

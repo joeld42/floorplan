@@ -3,19 +3,26 @@ use bevy::{prelude::*, scene::SceneBundle };
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 
 const PREVIEW_SCALE: f32 = 0.04;
+const PREVIEW_TIME: f32 = 1.2;
 
 // TODO: figure out how to get this from the gltf scene
 const MESH_WIDTH: f32 = 2.0;
 
 use super::floorplan;
-
 use rand::Rng;
+
+use super::interaction::{InteractionMode, InteractionState};
 
 #[derive(Event)]
 pub struct RebuildFloorplan;
 
 #[derive(Component)]
 pub struct PreviewGeo;
+
+#[derive(Component)]
+pub struct PreviewCamera {
+    pub lerptime : f32,
+}
 
 #[derive(Resource,Default)]
 pub struct WallSet {
@@ -92,7 +99,7 @@ pub fn setup_preview (
         Transform::from_translation(camera_pos).looking_at(CAMERA_TARGET, Vec3::Y);
 
     //commands.spawn((Camera3d::default(), camera_transform));
-    commands.spawn(Camera3dBundle {
+    commands.spawn((Camera3dBundle {
         camera: Camera {
             //clear_color: ClearColorConfig::None,
             order: 0,
@@ -100,7 +107,29 @@ pub fn setup_preview (
         },
         transform: camera_transform,
         ..Default::default()
-    });
+    }, PreviewCamera { lerptime : 0.0 } ) );
+}
+
+
+pub fn adjust_preview_camera(
+    time: Res<Time>,
+    mut camera_q: Query<(&mut Transform, &mut PreviewCamera)>,
+    mut state : ResMut<InteractionState>,
+) {
+    let (mut transform, mut pcam) = camera_q.single_mut();
+
+
+    pcam.lerptime = if state.mode == InteractionMode::Preview {
+         (pcam.lerptime + time.delta_seconds()).min( PREVIEW_TIME )
+    } else {
+        (pcam.lerptime - time.delta_seconds()).max( 0.0 )
+    };
+
+    transform.translation =
+        Vec3::new(-20.0, 120.0, 50.0).lerp(
+            Vec3::new( -20.0, 25.0, 50.0 ),
+            pcam.lerptime / PREVIEW_TIME
+        )
 }
 
 

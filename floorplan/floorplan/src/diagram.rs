@@ -31,6 +31,10 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
     // Reset scene every frame
     *scene = VelloScene::default();
 
+    if (state.mode == InteractionMode::Preview) {
+        return;
+    }
+
     // draw walls
     let stroke_int = kurbo::Stroke::new(2.0);
     let stroke_ext = kurbo::Stroke::new(6.0);
