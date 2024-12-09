@@ -10,9 +10,10 @@ use bevy_egui::{
 
 use constraints::{ Constraint, AnchorPoint, PinMode };
 
-use crate::floorplan::{Floorplan, FloorplanUndoStack};
+use crate::{floorplan::{Floorplan, FloorplanUndoStack}, preview::RebuildFloorplan};
 
 use super::floorplan;
+use super::preview;
 use super::interaction::{InteractionMode, InteractionState};
 
 pub fn ui_example_system(
@@ -20,6 +21,7 @@ pub fn ui_example_system(
     mut floorplan: ResMut<floorplan::Floorplan>,
     mut state: ResMut<InteractionState>,
     mut undo: ResMut<FloorplanUndoStack>,
+    mut ev_rebuild: EventWriter<preview::RebuildFloorplan>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -65,6 +67,24 @@ pub fn ui_example_system(
             {
                 state.mode = InteractionMode::SelectAnchors;
                 state.selected_walls.clear();
+            }
+
+            // Mode button Preview
+            if ui
+                .add(egui::widgets::Button::new("Preview 3D")
+                .selected( state.mode == InteractionMode::Preview ))
+                .clicked()
+            {
+                state.mode = InteractionMode::Preview;
+                state.clear_selection();
+
+                println!("Sending event...");
+                ev_rebuild.send( RebuildFloorplan );
+            }
+
+            if (state.mode == InteractionMode::Preview) {
+                // todo: 3d controls
+                return;
             }
 
             ui.label("Constraints");

@@ -18,6 +18,7 @@ pub enum InteractionMode {
     Create,
     SelectAnchors,
     SelectWalls,
+    Preview,
 }
 impl Default for InteractionMode {
     fn default() -> Self {
@@ -135,6 +136,7 @@ pub fn cursor_events(
 
             InteractionMode::SelectAnchors => { }
             InteractionMode::SelectWalls => { }
+            InteractionMode::Preview => { }
         }
 
 
