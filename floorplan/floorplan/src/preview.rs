@@ -1,9 +1,12 @@
 use bevy::{prelude::*, scene::SceneBundle };
 
+// This is super messy, just added it for fun, don't look
+// too closely :) :)
+
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 
 const PREVIEW_SCALE: f32 = 0.04;
-const PREVIEW_TIME: f32 = 1.2;
+const PREVIEW_TIME: f32 = 0.8;
 
 // TODO: figure out how to get this from the gltf scene
 const MESH_WIDTH: f32 = 2.0;
@@ -126,11 +129,17 @@ pub fn adjust_preview_camera(
         (pcam.lerptime - time.delta_seconds()).max( 0.0 )
     };
 
-    transform.translation =
-        Vec3::new(-20.0, 120.0, 50.0).lerp(
-            Vec3::new( -pcam.preview_radius * 2.0, 25.0, pcam.preview_radius * 2.0 + 10.0 ),
-            pcam.lerptime / PREVIEW_TIME
-        )
+    let t = time.elapsed_seconds() * 0.1;
+    let dir = Vec3::new( t.cos(), 0.5, t.sin() );
+    let cpos = dir * (pcam.preview_radius * 2.5);
+
+
+    let lerpval =(1.0-(pcam.lerptime / PREVIEW_TIME));
+    let yval = lerpval * 40.0;
+
+    transform.translation = cpos.lerp( Vec3::new( 0.0, 4.0, 1.0 ), lerpval );
+    transform.look_at( Vec3::new( 0.0, yval, 0.0 ), Vec3::Y );
+
 }
 
 
@@ -211,9 +220,10 @@ pub fn rebuild_floorplan(
 
                 println!("Spawn {}/{} at {:?}", i, num, p );
             }
-            println!("Radius is {}", radius );
+
             let mut pcam = camera_q.single_mut();
-            pcam.preview_radius = radius.min( 5.0 );
+            pcam.preview_radius = radius.max( 5.0 ).min( 20.0 );
+            //println!("Radius is {} pcam {}", radius, pcam.preview_radius );
         }
     }
 }
