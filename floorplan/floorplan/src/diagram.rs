@@ -2,9 +2,14 @@ use bevy::{prelude::* };
 use bevy_vello::{ prelude::* };
 
 use constraints::{ Constraint, PinMode };
+use kurbo::Dashes;
 
 use super::floorplan::{Floorplan, WallStyle};
 use super::interaction::{InteractionMode, InteractionState};
+
+// Good talk about Vello:
+//"Vello: High Performance 2d graphics - Raph Levien"
+//https://www.youtube.com/watch?v=mmW_RbTyj8c
 
 // =============================================================
 // convert from bevy's Vec2 to vello's Point.
@@ -33,6 +38,21 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
 
     if (state.mode == InteractionMode::Preview) {
         return;
+    }
+
+    // If align mode (holding shift), draw the align line
+    if state.do_align_cursor {
+        let stroke = kurbo::Stroke::new(0.5).with_dashes( 0.0, [ 1.0, 4.0 ]);
+        let cursor_diff = (state.world_cursor - state.world_cursor_align).abs();
+        let align_p = state.world_cursor_align.diagp();
+        let align_guide = if cursor_diff.x > cursor_diff.y {
+            kurbo::Line::new(  kurbo::Point::new( align_p.x - 1000.0, align_p.y ),
+                                kurbo::Point::new( align_p.x + 1000.0, align_p.y ) )
+        } else {
+            kurbo::Line::new(  kurbo::Point::new( align_p.x, align_p.y - 1000.0 ),
+                                kurbo::Point::new( align_p.x, align_p.y + 1000.0 ) )
+        };
+        scene.stroke(&stroke, kurbo::Affine::IDENTITY, peniko::Color::WHITE, None, &align_guide);
     }
 
     // draw walls
