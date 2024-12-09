@@ -1,6 +1,7 @@
 
 [workspace]
 resolver = "2" # Important! wgpu/Bevy needs this!
+default-run = "floorplan"
 members = [ "constraints",
     "floorplan",
     "run_wasm",

@@ -1,6 +1,7 @@
 use core::f32;
 
 use bevy::ecs::world;
+use bevy::render::render_phase::SetItemPipeline;
 use bevy::{prelude::* };
 use bevy::input::mouse::MouseButtonInput;
 
@@ -40,6 +41,7 @@ pub struct CreateModeInteractionState {
 pub struct InteractionState {
     pub mode : InteractionMode,
     pub world_cursor : Vec2,
+    pub world_cursor_align : Vec2,
     pub hover_anchor : Option<usize>,
     pub drag_anchor : Option<usize>,
 
@@ -50,6 +52,8 @@ pub struct InteractionState {
 
     pub left_panel: f32,
     pub egui_active : bool,
+
+    pub do_align_cursor : bool,
 }
 
 impl InteractionState {
@@ -78,18 +82,29 @@ pub fn cursor_events(
 
         let ( cam, _, cam_transform ) = q_camera.single();
 
-        let Some(world_pos) = cam.viewport_to_world_2d( cam_transform, ev.position ) else {
-            return
-        };
+        {
+            let Some(world_pos) = cam.viewport_to_world_2d( cam_transform, ev.position ) else {
+                return
+            };
 
-        // Somewhat hacky way to ignore egui_events.
-        state.egui_active = ev.position.x < state.left_panel;
-        if state.egui_active {
-            return;
+            // Somewhat hacky way to ignore egui_events.
+            state.egui_active = ev.position.x < state.left_panel;
+            if state.egui_active {
+                return;
+            }
+
+            // update the world cursor
+            state.world_cursor = if (state.do_align_cursor) {
+                let cursor_diff = (world_pos - state.world_cursor_align).abs();
+                if cursor_diff.x > cursor_diff.y {
+                    Vec2::new( world_pos.x, state.world_cursor_align.y )
+                } else {
+                    Vec2::new( state.world_cursor_align.x, world_pos.y )
+                }
+            } else {
+                world_pos
+            };
         }
-
-        // update the world cursor
-        state.world_cursor = world_pos;
 
         // println!(
         //     "New cursor position: X: {}, Y: {}, world {world_pos} in Window ID: {:?}",
@@ -103,7 +118,8 @@ pub fn cursor_events(
             // update the hover anchor if we're not currently dragging
             let mut hover_anc:  Option<usize> = None;
             for (ndx, anc) in floorplan.csys.anchors.iter().enumerate() {
-                if anc.p.distance(world_pos) < 5.0 {
+                if anc.p.distance(state.world_cursor) < 5.0 {
+
                     hover_anc = Some(ndx)
                 }
             }
@@ -154,9 +170,9 @@ pub fn cursor_events(
             if pin != PinMode::PinXY {
                 let p = floorplan.csys.anchors[drag_anchor].p;
                 floorplan.csys.anchors[drag_anchor].p = match pin {
-                    PinMode::Unpinned => world_pos,
-                    PinMode::PinX => Vec2::new( p.x, world_pos.y ),
-                    PinMode::PinY => Vec2::new( world_pos.x, p.y  ),
+                    PinMode::Unpinned => state.world_cursor,
+                    PinMode::PinX => Vec2::new( p.x, state.world_cursor.y ),
+                    PinMode::PinY => Vec2::new( state.world_cursor.x, p.y  ),
                     _ => unreachable!(), // Don't try to drag fully pinned anchors
                 }
             }
@@ -164,7 +180,7 @@ pub fn cursor_events(
 
         // Adjust create-drag ghost line
         if state.mode == InteractionMode::Create && state.create.is_dragging {
-            state.create.drag_end = world_pos;
+            state.create.drag_end = state.world_cursor;
             state.create.anc_end = floorplan.find_anchor( state.create.drag_end, 5.0);
         }
 
@@ -190,11 +206,20 @@ pub fn mouse_button_events(
             ButtonState::Pressed => {
                 //println!("Mouse button press: {:?}", ev.button);
 
-
-
                 if ev.button == MouseButton::Left {
 
+                    // set align target
+
+
                     let mut did_select = false;
+
+                    if state.mode == InteractionMode::Adjust {
+                        state.world_cursor_align = if let Some(hover_anchor) = state.hover_anchor {
+                            floorplan.csys.anchors[hover_anchor].p
+                        } else {
+                            state.world_cursor
+                        }
+                    }
 
                     if state.mode == InteractionMode::Create {
 
@@ -203,6 +228,12 @@ pub fn mouse_button_events(
                         state.create.drag_end = state.world_cursor;
                         state.create.anc_start = floorplan.find_anchor( state.create.drag_start, 5.0);
                         state.create.anc_end = state.create.anc_start;
+
+                        state.world_cursor_align = if let Some(anc) = state.create.anc_start  {
+                            floorplan.csys.anchors[anc].p
+                        } else {
+                            state.create.drag_start
+                        };
                     }
 
 
@@ -327,6 +358,11 @@ pub fn keyboard_input(
     mut state : ResMut<InteractionState>,
     mut undo: ResMut<FloorplanUndoStack>,
 ) {
+
+    // Hold shift to constrain cursor to horiz/vert
+    state.do_align_cursor = (keys.pressed( KeyCode::ShiftLeft)) || (keys.pressed( KeyCode::ShiftRight));
+    //println!("do_align_cursor: {}", state.do_align_cursor );
+
 
     // Ctrl-Z undo
     if keys.just_pressed(KeyCode::KeyZ)  &&
