@@ -164,26 +164,26 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
 
             }
         }
+    }
 
+    // If we're dragging a new wall, draw the ghost cursor
+    if state.mode==InteractionMode::Create && state.create.is_dragging {
 
-        // If we're dragging a new wall, draw the ghost cursor
-        if state.mode==InteractionMode::Create && state.create.is_dragging {
+        let start_pos = match state.create.anc_start {
+            Some(anc_ndx) => floorplan.csys.anchors[ anc_ndx ].p,
+            None => state.create.drag_start,
+        };
 
-            let start_pos = match state.create.anc_start {
-                Some(anc_ndx) => floorplan.csys.anchors[ anc_ndx ].p,
-                None => state.create.drag_start,
-            };
+        let end_pos = match state.create.anc_end {
+            Some(anc_ndx) => floorplan.csys.anchors[ anc_ndx ].p,
+            None => state.create.drag_end,
+        };
 
-            let end_pos = match state.create.anc_end {
-                Some(anc_ndx) => floorplan.csys.anchors[ anc_ndx ].p,
-                None => state.create.drag_end,
-            };
+        // println!("Create drag {:?} {:?}", state.create.anc_start, state.create.anc_end );
 
-            let line = kurbo::Line::new( start_pos.diagp(), end_pos.diagp() );
-                scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
-                            peniko::Color::CYAN, None, &line);
-        }
-
+        let line = kurbo::Line::new( start_pos.diagp(), end_pos.diagp() );
+            scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
+                        peniko::Color::CYAN, None, &line);
     }
 
     /*

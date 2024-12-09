@@ -12,7 +12,7 @@ use constraints::{ PinMode };
 
 // This file contains interaction logic for dragging/selecting
 
-#[derive(Copy, Clone,PartialEq)]
+#[derive(Copy, Clone,PartialEq, Debug)]
 pub enum InteractionMode {
     Adjust,
     Create,
@@ -49,16 +49,20 @@ pub struct InteractionState {
 
     pub left_panel: f32,
     pub egui_active : bool,
-
-    // pub fn clear_selection( &mut self ) {
-    //     self.hover_anchor = None;
-    //     self.drag_anchor = None;
-    //     self.selected_anchors.clear();
-    //     self.selected_walls.clear();
-    // }
 }
 
+impl InteractionState {
 
+    pub fn clear_selection( &mut self ) {
+        self.hover_anchor = None;
+        self.drag_anchor = None;
+        self.selected_anchors.clear();
+        self.selected_walls.clear();
+        self.create.anc_start = None;
+        self.create.anc_end = None;
+        self.create.is_dragging = false;
+    }
+}
 
 pub fn cursor_events(
     mut evr_cursor: EventReader<CursorMoved>,
@@ -318,12 +322,17 @@ pub fn mouse_button_events(
 pub fn keyboard_input(
     mut floorplan : ResMut<floorplan::Floorplan>,
     keys: Res<ButtonInput<KeyCode>>,
+    mut state : ResMut<InteractionState>,
     mut undo: ResMut<FloorplanUndoStack>,
 ) {
+
+    // Ctrl-Z undo
     if keys.just_pressed(KeyCode::KeyZ)  &&
     (keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight)) {
         if let Some(entry) = undo.stack.pop() {
             floorplan.copy_from( entry.floorplan );
+
+            state.clear_selection();
         }
     }
 

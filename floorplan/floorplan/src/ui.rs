@@ -279,6 +279,8 @@ pub fn ui_example_system(
 
                     if let Some(entry) = undo.stack.pop() {
                         floorplan.copy_from( entry.floorplan );
+
+                        state.clear_selection();
                     }
 
                 }
