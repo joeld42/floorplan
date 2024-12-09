@@ -19,7 +19,7 @@ pub struct AnchorPoint
     pub pin : PinMode,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ConstraintSystem
 {
     pub anchors : Vec<AnchorPoint>,
@@ -109,7 +109,7 @@ impl ConstraintSystem
 
         let str = base_str / (steps as f32);
 
-        for substep in 0..steps {
+        for _substep in 0..steps {
 
             // store orig pos
             for anc in self.anchors.iter_mut() {

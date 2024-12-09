@@ -4,6 +4,8 @@ use bevy::ecs::world;
 use bevy::{prelude::* };
 use bevy::input::mouse::MouseButtonInput;
 
+use crate::floorplan::FloorplanUndoStack;
+
 use super::floorplan;
 
 use constraints::{ PinMode };
@@ -64,6 +66,7 @@ pub fn cursor_events(
     q_camera: Query<(&Camera, &Camera2d, &GlobalTransform)>,
     mut q_pancam : Query<&mut bevy_pancam::PanCam>,
     mut floorplan : ResMut<floorplan::Floorplan>,
+    mut undo: ResMut<FloorplanUndoStack>,
     mut state : ResMut<InteractionState>,
 ) {
     for ev in evr_cursor.read() {
@@ -133,6 +136,14 @@ pub fn cursor_events(
 
         // Adjust drag anchor
         if let Some(drag_anchor) = state.drag_anchor {
+
+            // hack..
+            if !undo.is_top_adjust() {
+                undo.push_before_adjust( &floorplan );
+            }
+
+
+
             let pin = floorplan.csys.anchors[drag_anchor].pin;
             if pin != PinMode::PinXY {
                 let p = floorplan.csys.anchors[drag_anchor].p;
@@ -158,6 +169,7 @@ pub fn mouse_button_events(
     mut floorplan : ResMut<floorplan::Floorplan>,
     mut mousebtn_evr: EventReader<MouseButtonInput>,
     mut state : ResMut<InteractionState>,
+    mut undo : ResMut<FloorplanUndoStack>,
 ) {
     use bevy::input::ButtonState;
 
@@ -290,6 +302,8 @@ pub fn mouse_button_events(
 
                         } else {
 
+                            undo.push_before_op( "Create Wall", &floorplan );
+
                             // Create the wall
                             create_wall( &mut floorplan, &state.create );
                         }
@@ -298,6 +312,21 @@ pub fn mouse_button_events(
             }
         }
     }
+}
+
+
+pub fn keyboard_input(
+    mut floorplan : ResMut<floorplan::Floorplan>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut undo: ResMut<FloorplanUndoStack>,
+) {
+    if keys.just_pressed(KeyCode::KeyZ)  &&
+    (keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight)) {
+        if let Some(entry) = undo.stack.pop() {
+            floorplan.copy_from( entry.floorplan );
+        }
+    }
+
 }
 
 fn create_wall( floorplan : &mut floorplan::Floorplan, create : &CreateModeInteractionState )

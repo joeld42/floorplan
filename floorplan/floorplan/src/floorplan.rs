@@ -34,8 +34,46 @@ impl Default for Wall {
     }
 }
 
+pub struct UndoCheckpoint {
+    pub op_name : String,
+    pub floorplan : Floorplan,
+    pub adjust : bool
+}
 
 #[derive(Resource, Default)]
+pub struct FloorplanUndoStack
+{
+    pub stack : Vec<UndoCheckpoint>,
+}
+
+impl FloorplanUndoStack
+{
+    pub fn push_before_op( &mut self, name : &str, floorplan : &Floorplan)
+    {
+        self.stack.push( UndoCheckpoint { op_name : String::from(name), floorplan: floorplan.clone(), adjust : false } );
+    }
+
+    pub fn push_before_adjust( &mut self, floorplan : &Floorplan)
+    {
+        self.stack.push( UndoCheckpoint { op_name : String::from("Adjust"), floorplan: floorplan.clone(), adjust : true } );
+    }
+
+    pub fn is_top_adjust( &self ) -> bool {
+
+        // ?? the if let should cover this??
+        if self.stack.len() == 0 {
+            return false
+        }
+
+        if let Some(top) = self.stack.last() {
+            top.adjust
+        } else {
+            false
+        }
+    }
+}
+
+#[derive(Resource, Default, Clone)]
 pub struct Floorplan
 {
     pub csys : ConstraintSystem,
@@ -83,6 +121,33 @@ impl Floorplan
         // result
         closest_anc
     }
+
+    pub fn make_starter_floorplan() -> Floorplan {
+        let mut floorplan = Floorplan::default();
+
+        let a = floorplan.csys.add_anchor( Vec2::new( -100.0, -100.0 ));
+        let b = floorplan.csys.add_anchor( Vec2::new(  100.0, -100.0 ));
+        let c = floorplan.csys.add_anchor( Vec2::new(  100.0, 120.0 ));
+        let d = floorplan.csys.add_anchor( Vec2::new(  -100.0, 100.0 ));
+
+        floorplan.walls.push( Wall { anchor_a : a, anchor_b : b, ..default() });
+        floorplan.walls.push( Wall { anchor_a : b, anchor_b : c, ..default() });
+        floorplan.walls.push( Wall { anchor_a : c, anchor_b : d, ..default() });
+        floorplan.walls.push( Wall { anchor_a : d, anchor_b : a, style : WallStyle::Exterior });
+
+        floorplan.csys.add_constraint_fixed_len( a, d, None );
+
+        // result
+        floorplan
+    }
+
+
+    pub fn copy_from ( &mut self, other : Floorplan )
+    {
+        self.csys = other.csys.clone();
+        self.walls = other.walls.clone();
+    }
+
 }
 
 

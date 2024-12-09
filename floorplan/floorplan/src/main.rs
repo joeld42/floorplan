@@ -12,7 +12,7 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 
 use bevy_vello::{ prelude::*, VelloPlugin };
 
-use floorplan::Floorplan;
+use floorplan::{Floorplan, FloorplanUndoStack};
 
 mod diagram;
 mod ui;
@@ -28,27 +28,16 @@ struct OriginalCameraTransform(Transform);
 fn main() {
 
 
+
     //let mut csys = ConstraintSystem::new();
-    let mut floorplan = Floorplan::default();
+    let floorplan = Floorplan::make_starter_floorplan();
 
-    let a = floorplan.csys.add_anchor( Vec2::new( -100.0, -100.0 ));
-    let b = floorplan.csys.add_anchor( Vec2::new(  100.0, -100.0 ));
-    let c = floorplan.csys.add_anchor( Vec2::new(  100.0, 120.0 ));
-    let d = floorplan.csys.add_anchor( Vec2::new(  -100.0, 100.0 ));
-
-    floorplan.walls.push( floorplan::Wall { anchor_a : a, anchor_b : b, ..default() });
-    floorplan.walls.push( floorplan::Wall { anchor_a : b, anchor_b : c, ..default() });
-    floorplan.walls.push( floorplan::Wall { anchor_a : c, anchor_b : d, ..default() });
-    floorplan.walls.push( floorplan::Wall { anchor_a : d, anchor_b : a, style : floorplan::WallStyle::Exterior });
-
-    floorplan.csys.add_constraint_fixed_len( a, d, None );
-    //floorplan.csys.add_constraint_parallel( a, b, d, c );
-    //floorplan.csys.add_constraint_angle( a, b, c, None );
 
     // TODO: split these systems into Plugins for tidyness
     App::new()
         //.insert_resource(WinitSettings::desktop_app())
         .insert_resource( floorplan )
+        .init_resource::<FloorplanUndoStack>()
         .insert_resource(ClearColor(Color::srgb(0.176, 0.247, 0.431)))
         .init_resource::<interaction::InteractionState>()
         .add_plugins(DefaultPlugins)
@@ -61,6 +50,7 @@ fn main() {
         .add_systems(Update, diagram::render_diagram)
         .add_systems( Update, update_constraints )
         .add_systems( Update, interaction::cursor_events )
+        .add_systems( Update, interaction::keyboard_input )
         .add_systems( Update, interaction::mouse_button_events )
         //.add_systems(Update, update_camera_transform_system)
         .run();
@@ -69,8 +59,8 @@ fn main() {
 
 fn setup_system(
     mut commands: Commands,
-    //mut meshes: ResMut<Assets<Mesh>>,
-    //mut materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
     let mut camera2d = Camera2dBundle {
@@ -96,7 +86,7 @@ fn setup_system(
 
 
     // Spawn 3D scene
-    /*
+
     commands.spawn(PbrBundle {
         mesh: meshes.add(Plane3d::default().mesh().size(5.0, 5.0)),
         material: materials.add(Color::srgb(0.3, 0.5, 0.3)),
@@ -117,7 +107,7 @@ fn setup_system(
          transform: Transform::from_xyz(4.0, 8.0, 4.0),
          ..Default::default()
     });
-*/
+
 
 
     let camera_pos = Vec3::new(-2.0, 2.5, 5.0);

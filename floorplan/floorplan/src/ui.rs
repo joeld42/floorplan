@@ -1,3 +1,5 @@
+use std::default;
+
 use bevy::{prelude::* };
 use bevy_egui::{
     //egui::{self, Color32},
@@ -8,6 +10,8 @@ use bevy_egui::{
 
 use constraints::{ Constraint, AnchorPoint, PinMode };
 
+use crate::floorplan::{Floorplan, FloorplanUndoStack};
+
 use super::floorplan;
 use super::interaction::{InteractionMode, InteractionState};
 
@@ -15,6 +19,7 @@ pub fn ui_example_system(
     mut contexts: EguiContexts,
     mut floorplan: ResMut<floorplan::Floorplan>,
     mut state: ResMut<InteractionState>,
+    mut undo: ResMut<FloorplanUndoStack>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -85,10 +90,13 @@ pub fn ui_example_system(
                 // Fixme check if constraint is already there
                 if state.mode == InteractionMode::SelectAnchors
                 {
+                    undo.push_before_op( "Fixed Len Constraint", &floorplan );
                     floorplan.csys.add_constraint_fixed_len(
                         state.selected_anchors[0], state.selected_anchors[1], None );
 
                 } else {
+                    undo.push_before_op( "Fixed Len Constraint", &floorplan );
+
                     let wall = floorplan.walls[ state.selected_walls[0] ];
                     floorplan.csys.add_constraint_fixed_len( wall.anchor_a, wall.anchor_b, None );
                 }
@@ -120,6 +128,7 @@ pub fn ui_example_system(
                 }
                 //println!("AB dot CD is {}", dot );
 
+                undo.push_before_op( "Parallel Constraint", &floorplan );
                 floorplan.csys.add_constraint_parallel( a,b,c,d );
             }
 
@@ -170,7 +179,7 @@ pub fn ui_example_system(
                 let b1 = (floorplan.csys.anchors[anc1].p - b).normalize();
                 let b2 = (b - floorplan.csys.anchors[anc2].p).normalize();
                 let ccw = b1.x*b2.y - b1.y*b2.x;
-                println!("b1 cross b2 is {}", ccw );
+                //println!("b1 cross b2 is {}", ccw );
                 let (anc1,anc2) = if ccw < 0.0 {
                     (anc2, anc1)
                 } else {
@@ -178,6 +187,7 @@ pub fn ui_example_system(
                 };
 
                 println!("make angle constraint for {} {} {}", anc1, shared_anchor, anc2 );
+                undo.push_before_op( "Angle Constraint", &floorplan );
                 floorplan.csys.add_constraint_angle( anc1, shared_anchor, anc2,None);
             }
 
@@ -226,6 +236,53 @@ pub fn ui_example_system(
             //     },
             //     _ => {},
             // }
+
+
+            ui.add(egui::Separator::default());
+
+            ui.horizontal(|ui| {
+                if ui
+                    .add( egui::widgets::Button::new("Reset") )
+                    .clicked()
+                {
+                    let orig = Floorplan::make_starter_floorplan();
+                    floorplan.copy_from( orig );
+
+                    undo.stack.clear();
+                }
+
+                if ui
+                    .add( egui::widgets::Button::new("Clear") )
+                    .clicked()
+                {
+                    let empty = Floorplan::default();
+                    floorplan.copy_from( empty );
+
+                    undo.stack.clear();
+                }
+            });
+
+            let mut can_undo = true;
+
+            let title = if let Some(top) = undo.stack.last() {
+                format!("Undo {}", top.op_name )
+            } else {
+                can_undo = false;
+                String::from("Undo")
+            };
+
+
+            if ui
+                    .add_enabled(  can_undo, egui::widgets::Button::new(title ) )
+                    .clicked()
+                {
+
+                    if let Some(entry) = undo.stack.pop() {
+                        floorplan.copy_from( entry.floorplan );
+                    }
+
+                }
+
 
 
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
@@ -293,7 +350,6 @@ fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint )
     match constraint {
 
         Constraint::FixedLength( cc_fixed ) => {
-
 
 
             ui.label( "Fixed Length:" );
