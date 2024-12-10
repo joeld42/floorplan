@@ -41,7 +41,7 @@ pub fn setup_preview (
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // This is all rather hardcoded right now :P
-    for i in 0..3 {
+    for i in 0..5 {
         // let mesh_handle = asset_server.load("walls.glb#Mesh0/Primitive0");
         let mesh_handle = asset_server.load(format!( "walls.glb#Mesh{}/Primitive0", i) );
         walls.walls.push( mesh_handle );
