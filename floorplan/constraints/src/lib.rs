@@ -102,7 +102,7 @@ impl ConstraintSystem
 
     pub fn eval_system( &mut self ) {
         let steps = 100;
-        let base_str = 5.0;
+        let base_str = 2.0;
 
         // let steps = 1;
         // let base_str = 1.0;
@@ -298,8 +298,10 @@ impl AngleConstraint {
 
             let ang = ang_diff * 0.5 * str;
 
-            anc_a.p = anc_a.p.rotate_around_point_lim( anc_b.p, -ang, 0.1 );
-            anc_c.p = anc_c.p.rotate_around_point_lim( anc_b.p, ang, 0.1 );
+            // anc_a.p = anc_a.p.rotate_around_point_lim( anc_b.p, -ang, 0.1 );
+            // anc_c.p = anc_c.p.rotate_around_point_lim( anc_b.p, ang, 0.1 );
+            anc_a.p = anc_a.p.rotate_around_point( anc_b.p, -ang );
+            anc_c.p = anc_c.p.rotate_around_point( anc_b.p, ang );
 
     }
 }

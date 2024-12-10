@@ -1,4 +1,3 @@
-use std::default;
 
 use bevy::{prelude::* };
 use bevy_egui::{
@@ -82,7 +81,7 @@ pub fn ui_example_system(
                 ev_rebuild.send( RebuildFloorplan );
             }
 
-            if (state.mode == InteractionMode::Preview) {
+            if state.mode == InteractionMode::Preview {
                 // todo: 3d controls
                 return;
             }
@@ -305,6 +304,10 @@ pub fn ui_example_system(
 
                 }
 
+            // Solver settings
+            ui.add(egui::Separator::default());
+            ui.checkbox(&mut state.solve_from_mousedown, "Solve From Mousedown");
+
 
 
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
@@ -395,7 +398,7 @@ fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint )
                 ))
                 .changed()
                 {
-                    println!( "angle changed...");
+                    //println!( "angle changed...");
                     cc_ang.target_angle = angle_deg.to_radians();
                 };
         }

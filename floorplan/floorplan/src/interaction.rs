@@ -1,15 +1,10 @@
 use core::f32;
 
-use bevy::ecs::world;
-use bevy::render::render_phase::SetItemPipeline;
 use bevy::{prelude::* };
 use bevy::input::mouse::MouseButtonInput;
 
-use crate::floorplan::FloorplanUndoStack;
-
 use super::floorplan;
-
-use constraints::{ PinMode };
+use super::floorplan::FloorplanUndoStack;
 
 // This file contains interaction logic for dragging/selecting
 
@@ -54,6 +49,10 @@ pub struct InteractionState {
     pub egui_active : bool,
 
     pub do_align_cursor : bool,
+
+    // alternative solver mode
+    pub solve_from_mousedown : bool,
+    pub anc_pos_mousedown: Vec<Vec2>,
 }
 
 impl InteractionState {
@@ -74,8 +73,7 @@ pub fn cursor_events(
     buttons: Res<ButtonInput<MouseButton>>,
     q_camera: Query<(&Camera, &Camera2d, &GlobalTransform)>,
     mut q_pancam : Query<&mut bevy_pancam::PanCam>,
-    mut floorplan : ResMut<floorplan::Floorplan>,
-    mut undo: ResMut<FloorplanUndoStack>,
+    floorplan : Res<floorplan::Floorplan>,
     mut state : ResMut<InteractionState>,
 ) {
     for ev in evr_cursor.read() {
@@ -94,7 +92,7 @@ pub fn cursor_events(
             }
 
             // update the world cursor
-            state.world_cursor = if (state.do_align_cursor) {
+            state.world_cursor = if state.do_align_cursor {
                 let cursor_diff = (world_pos - state.world_cursor_align).abs();
                 if cursor_diff.x > cursor_diff.y {
                     Vec2::new( world_pos.x, state.world_cursor_align.y )
@@ -155,28 +153,6 @@ pub fn cursor_events(
             InteractionMode::Preview => { }
         }
 
-
-        // Adjust drag anchor
-        if let Some(drag_anchor) = state.drag_anchor {
-
-            // hack..
-            if !undo.is_top_adjust() {
-                undo.push_before_adjust( &floorplan );
-            }
-
-
-
-            let pin = floorplan.csys.anchors[drag_anchor].pin;
-            if pin != PinMode::PinXY {
-                let p = floorplan.csys.anchors[drag_anchor].p;
-                floorplan.csys.anchors[drag_anchor].p = match pin {
-                    PinMode::Unpinned => state.world_cursor,
-                    PinMode::PinX => Vec2::new( p.x, state.world_cursor.y ),
-                    PinMode::PinY => Vec2::new( state.world_cursor.x, p.y  ),
-                    _ => unreachable!(), // Don't try to drag fully pinned anchors
-                }
-            }
-        }
 
         // Adjust create-drag ghost line
         if state.mode == InteractionMode::Create && state.create.is_dragging {

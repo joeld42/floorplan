@@ -1,5 +1,5 @@
 //use bevy::{prelude::*, window::PrimaryWindow };
-use bevy::{prelude::*, scene::SceneBundle };
+use bevy::{prelude::* };
 
 use bevy::render::camera::ScalingMode;
 use bevy_egui::{
@@ -13,6 +13,7 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy_vello::{ prelude::*, VelloPlugin };
 
 use floorplan::{Floorplan, FloorplanUndoStack};
+use constraints::{ PinMode };
 
 mod diagram;
 mod ui;
@@ -61,10 +62,7 @@ fn main() {
 
 
 fn setup_system(
-    asset_server: Res<AssetServer>,
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
     let mut camera2d = Camera2dBundle {
@@ -85,17 +83,57 @@ fn setup_system(
     // Spawn diagram scene
     commands.spawn( (camera2d, bevy_pancam::PanCam::default() ) );
     commands.spawn(VelloSceneBundle::default());
-
-
-    //let walls_src = asset_server.load("walls.glb#Scene0");
-
-
-
-
 }
 
-fn update_constraints( mut floorplan : ResMut<floorplan::Floorplan> )
+fn update_constraints(
+    mut state : ResMut<interaction::InteractionState>,
+    mut undo: ResMut<FloorplanUndoStack>,
+    mut floorplan : ResMut<floorplan::Floorplan>
+)
 {
+
+    if let Some(drag_anchor) = state.drag_anchor {
+
+        // hack..
+        if !undo.is_top_adjust() {
+            undo.push_before_adjust( &floorplan );
+        }
+
+
+        if state.solve_from_mousedown {
+
+            // resize and store current anchors (should happen on mousedown)
+            if state.anc_pos_mousedown.len() != floorplan.csys.anchors.len() {
+                state.anc_pos_mousedown.resize( floorplan.csys.anchors.len(), Vec2::ZERO );
+
+                for i in 0..floorplan.csys.anchors.len() {
+                    state.anc_pos_mousedown[i] = floorplan.csys.anchors[i].p;
+                }
+            }
+
+            // Restore anchors from mousedown
+            for i in 0..floorplan.csys.anchors.len() {
+                floorplan.csys.anchors[i].p = state.anc_pos_mousedown[i];
+            }
+        }
+
+        let pin = floorplan.csys.anchors[drag_anchor].pin;
+        if pin != PinMode::PinXY {
+            let p = floorplan.csys.anchors[drag_anchor].p;
+            floorplan.csys.anchors[drag_anchor].p = match pin {
+                PinMode::Unpinned => state.world_cursor,
+                PinMode::PinX => Vec2::new( p.x, state.world_cursor.y ),
+                PinMode::PinY => Vec2::new( state.world_cursor.x, p.y  ),
+                _ => unreachable!(), // Don't try to drag fully pinned anchors
+            }
+        }
+        //println!("drag anchor is {}", drag_anchor );
+    } else {
+        // no drag anchor
+        state.anc_pos_mousedown.clear();
+    }
+
+
     // update the constraint solver
     floorplan.csys.eval_system();
 }

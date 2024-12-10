@@ -2,7 +2,6 @@ use bevy::{prelude::* };
 use bevy_vello::{ prelude::* };
 
 use constraints::{ Constraint, PinMode };
-use kurbo::Dashes;
 
 use super::floorplan::{Floorplan, WallStyle};
 use super::interaction::{InteractionMode, InteractionState};
@@ -27,16 +26,15 @@ impl DiagramConvert for Vec2 {
 pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
                     floorplan: Res<Floorplan>,
                     state: Res<InteractionState>,
-                    //time: Res<Time>
                     ) {
-    //let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
+
     let (mut _transform, mut scene) = query_scene.single_mut();
 
 
     // Reset scene every frame
     *scene = VelloScene::default();
 
-    if (state.mode == InteractionMode::Preview) {
+    if state.mode == InteractionMode::Preview {
         return;
     }
 
@@ -62,22 +60,6 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
 
         let anc_a = floorplan.csys.anchors[ wall.anchor_a ];
         let anc_b = floorplan.csys.anchors[ wall.anchor_b ];
-
-        // scene.fill(
-        //     peniko::Fill::NonZero,
-        //     kurbo::Affine::default(),
-        //     peniko::Color::WHITE,
-        //     None,
-        //     &kurbo::Line::new(
-
-        //         kurbo::Point::new( anc_a.p.x.into(),  (-anc_a.p.y).into() ),
-        //         kurbo::Point::new( anc_b.p.x.into(),  (-anc_b.p.y).into() )
-        //     )
-        // );
-
-        // let line = kurbo::Line::new( kurbo::Point::new( anc_a.p.x.into(), (-anc_a.p.y).into() ),
-        //                             kurbo::Point::new( anc_b.p.x.into(),  (-anc_b.p.y).into() ));
-
         let line = kurbo::Line::new( anc_a.p.diagp(), anc_b.p.diagp() );
 
         // match wall.style to pick stroke_int or stroke_ext
@@ -150,7 +132,7 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
                 let pb = floorplan.csys.anchors[ fixed_len.anc_b ].p;
 
                 match floorplan.find_wall( fixed_len.anc_a, fixed_len.anc_b ) {
-                    Some(wall) => {
+                    Some( _wall) => {
 
                         let line = kurbo::Line::new( pa.diagp(), pb.diagp() );
                         scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,

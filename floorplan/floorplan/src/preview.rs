@@ -1,4 +1,4 @@
-use bevy::{prelude::*, scene::SceneBundle };
+use bevy::{prelude::* };
 
 // This is super messy, just added it for fun, don't look
 // too closely :) :)
@@ -118,7 +118,7 @@ pub fn setup_preview (
 pub fn adjust_preview_camera(
     time: Res<Time>,
     mut camera_q: Query<(&mut Transform, &mut PreviewCamera)>,
-    mut state : ResMut<InteractionState>,
+    state : Res<InteractionState>,
 ) {
     let (mut transform, mut pcam) = camera_q.single_mut();
 
@@ -134,7 +134,7 @@ pub fn adjust_preview_camera(
     let cpos = dir * (pcam.preview_radius * 2.5);
 
 
-    let lerpval =(1.0-(pcam.lerptime / PREVIEW_TIME));
+    let lerpval = 1.0-(pcam.lerptime / PREVIEW_TIME);
     let yval = lerpval * 40.0;
 
     transform.translation = cpos.lerp( Vec3::new( 0.0, 4.0, 1.0 ), lerpval );
@@ -152,7 +152,7 @@ pub fn rebuild_floorplan(
     floorplan : Res<floorplan::Floorplan>,
     mut camera_q: Query<&mut PreviewCamera>,
 ) {
-    for ev in ev_rebuild.read() {
+    for _ev in ev_rebuild.read() {
         println!("Need to rebuild floorplan...");
 
         // Despawn old preview geo
