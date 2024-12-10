@@ -22,7 +22,7 @@ pub struct Wall
 {
     pub anchor_a : usize,
     pub anchor_b : usize,
-    pub style : WallStyle,
+    pub _style : WallStyle,
 }
 
 impl Default for Wall {
@@ -30,7 +30,7 @@ impl Default for Wall {
         Self {
             anchor_a: 0,
             anchor_b: 0,
-            style: WallStyle::default(),
+            _style: WallStyle::default(),
         }
     }
 }
@@ -134,7 +134,7 @@ impl Floorplan
         floorplan.walls.push( Wall { anchor_a : a, anchor_b : b, ..default() });
         floorplan.walls.push( Wall { anchor_a : b, anchor_b : c, ..default() });
         floorplan.walls.push( Wall { anchor_a : c, anchor_b : d, ..default() });
-        floorplan.walls.push( Wall { anchor_a : d, anchor_b : a, style : WallStyle::Exterior });
+        floorplan.walls.push( Wall { anchor_a : d, anchor_b : a, _style : WallStyle::Exterior });
 
         floorplan.csys.add_constraint_fixed_len( a, d, None );
 

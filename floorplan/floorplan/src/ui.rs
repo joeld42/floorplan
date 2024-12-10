@@ -440,6 +440,5 @@ fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint, active
                     cc_ang.target_angle = angle_deg.to_radians();
                 };
         }
-        _ => {}
     }
 }

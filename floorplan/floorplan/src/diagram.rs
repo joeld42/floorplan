@@ -5,7 +5,7 @@ use constraints::{ Constraint, PinMode };
 
 use vello::peniko::Color;
 
-use super::floorplan::{Floorplan, WallStyle};
+use super::floorplan::Floorplan;
 use super::interaction::{InteractionMode, InteractionState};
 
 // Good talk about Vello:
