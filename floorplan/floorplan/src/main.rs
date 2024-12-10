@@ -30,13 +30,23 @@ fn main() {
 
     // TODO: split these systems into Plugins for tidyness
     App::new()
+         .add_plugins(DefaultPlugins)
+
+        // .add_plugins(DefaultPlugins.set( WindowPlugin {
+        //     primary_window: Some(Window {
+        //         canvas: Some("#floorplan-canvas".into()),
+        //         ..default()
+        //     }),
+        //     ..default()
+        // }) )
+
         //.insert_resource(WinitSettings::desktop_app())
         .insert_resource( floorplan )
         .init_resource::<FloorplanUndoStack>()
-        .insert_resource(ClearColor(Color::srgb(0.176, 0.247, 0.431)))
+        .insert_resource(ClearColor(Color::srgb(0.184,0.196,0.451)))
         .init_resource::<interaction::InteractionState>()
         .init_resource::<preview::WallSet>()
-        .add_plugins(DefaultPlugins)
+
         .add_plugins(VelloPlugin::default())
         .add_plugins(EguiPlugin)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())

@@ -63,8 +63,6 @@ impl ConstraintSystem
     // If target_len is none, will use the current length between the anchors
     pub fn add_constraint_fixed_len( &mut self, a : usize, b : usize, target_len : Option<f32> ) {
 
-        println!("Add constraint fixed len {} {} -- {:?}", a, b, target_len );
-
         let target_len = match target_len {
             Some( len ) => len,
             None => (self.anchors[ b ].p - self.anchors[ a ].p).length(),

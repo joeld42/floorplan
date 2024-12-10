@@ -2,6 +2,7 @@
 use bevy::{prelude::* };
 use constraints::{ ConstraintSystem };
 
+// Ended up not using this
 #[derive(Copy,Clone)]
 pub enum WallStyle
 {
@@ -127,8 +128,8 @@ impl Floorplan
 
         let a = floorplan.csys.add_anchor( Vec2::new( -100.0, -100.0 ));
         let b = floorplan.csys.add_anchor( Vec2::new(  100.0, -100.0 ));
-        let c = floorplan.csys.add_anchor( Vec2::new(  100.0, 120.0 ));
-        let d = floorplan.csys.add_anchor( Vec2::new(  -100.0, 100.0 ));
+        let c = floorplan.csys.add_anchor( Vec2::new(  100.0, 140.0 ));
+        let d = floorplan.csys.add_anchor( Vec2::new(  -100.0, 80.0 ));
 
         floorplan.walls.push( Wall { anchor_a : a, anchor_b : b, ..default() });
         floorplan.walls.push( Wall { anchor_a : b, anchor_b : c, ..default() });

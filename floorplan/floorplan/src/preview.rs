@@ -50,7 +50,7 @@ pub fn setup_preview (
     // Spawn 3D scene
     commands.spawn(PbrBundle {
         mesh: meshes.add(Plane3d::default().mesh().size(100.0, 100.0)),
-        material: materials.add(Color::srgb(0.3, 0.5, 0.3)),
+        material: materials.add(Color::srgb(0.298,0.286,0.651) ),
         ..Default::default()
     });
     // commands.spawn(PbrBundle {
@@ -70,12 +70,12 @@ pub fn setup_preview (
     //     ..default()
     // });
 
-    commands.spawn(( PbrBundle {
-        mesh: walls.walls[0].clone(),
-        material: materials.add(Color::srgb(0.8, 0.7, 0.6)),
-        transform: Transform::from_xyz(0.0, 0.0, 0.0),
-        ..default()
-     }, PreviewGeo ));
+    // commands.spawn(( PbrBundle {
+    //     mesh: walls.walls[0].clone(),
+    //     material: materials.add(Color::srgb(0.8, 0.7, 0.6)),
+    //     transform: Transform::from_xyz(0.0, 0.0, 0.0),
+    //     ..default()
+    //  }, PreviewGeo ));
 
     // commands.spawn(PointLightBundle {
     //     point_light: PointLight {
@@ -161,7 +161,7 @@ pub fn rebuild_floorplan(
         }
 
         //let mesh_handle = asset_server.load("walls.glb#Mesh0/Primitive0");
-        let mtl = materials.add(Color::srgb(0.8, 0.7, 0.6));
+        let mtl = materials.add(Color::srgb(0.427,0.482,0.651));
 
         let mut rng = rand::thread_rng();
         for wall in floorplan.walls.iter() {
@@ -181,15 +181,13 @@ pub fn rebuild_floorplan(
             };
 
 
-            // don't make more then 10 segments for each wall
-            let num = num.min( 10 );
+            // don't make more then 50 segments for each wall
+            let num = num.min( 50 );
 
             let dir = pb - pa;
 
             let dn = dir.normalize();
             let ang = -dn.y.atan2( dn.x );
-
-            //println!("Num segments {}", num );
 
             let mut radius : f32 = 0.0;
             for i in 0..num {
@@ -218,7 +216,7 @@ pub fn rebuild_floorplan(
 
                 radius = radius.max( p.length() );
 
-                println!("Spawn {}/{} at {:?}", i, num, p );
+                //println!("Spawn {}/{} at {:?}", i, num, p );
             }
 
             let mut pcam = camera_q.single_mut();

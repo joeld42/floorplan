@@ -46,6 +46,7 @@ pub fn ui_example_system(
                 .clicked()
             {
                 state.mode = InteractionMode::Create;
+                state.selected_anchors.clear();
             }
 
             // Mode button Select Walls
@@ -220,10 +221,23 @@ pub fn ui_example_system(
             }
 
             // Show panel for all constraints on the currently selected stuff
+
+            // Combine the list of anchors and walls
+            let mut active_anchors = state.selected_anchors.clone();
+            for wall_ndx in state.selected_walls.iter() {
+                let wall = floorplan.walls[ *wall_ndx ];
+                if !active_anchors.contains( &wall.anchor_a ) {
+                    active_anchors.push( wall.anchor_a )
+                }
+                if !active_anchors.contains( &wall.anchor_b ) {
+                    active_anchors.push( wall.anchor_b )
+                }
+            }
+
             for cons in floorplan.csys.constraints.iter_mut() {
 
                 // TODO: only show the constraints that have anchors or walls selected
-                edit_constraint_pane( ui,  cons );
+                edit_constraint_pane( ui,  cons, &active_anchors );
             }
 
 
@@ -368,15 +382,19 @@ fn edit_anchor_panel( ui: &mut egui::Ui, anchor : &mut AnchorPoint )
     };
 }
 
-fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint )
+fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint, active : &Vec<usize> )
 {
-    ui.add(egui::Separator::default());
 
     match constraint {
 
         Constraint::FixedLength( cc_fixed ) => {
 
+            // Is this constraint active in selected items?
+            if !(active.contains( &cc_fixed.anc_a ) || active.contains( &cc_fixed.anc_b )) {
+                return;
+            }
 
+            ui.add(egui::Separator::default());
             ui.label( "Fixed Length:" );
             if ui
                 .add(egui::Slider::new(
@@ -388,8 +406,28 @@ fn edit_constraint_pane( ui: &mut egui::Ui, constraint : &mut Constraint )
                     //println!( "length changed...");
                 };
         }
+
+        Constraint::Parallel( cc_parr ) => {
+
+            // Is this constraint active in selected items?
+            if !(active.contains( &cc_parr.anc_a ) || active.contains( &cc_parr.anc_b ) ||
+                 active.contains( &cc_parr.anc_c ) || active.contains( &cc_parr.anc_d )) {
+                return;
+            }
+
+            ui.add(egui::Separator::default());
+            ui.label( "Parallel" );
+        }
+
         Constraint::Angle( cc_ang ) => {
+
+            if !(active.contains( &cc_ang.anc_a ) || active.contains( &cc_ang.anc_b ) ||
+                 active.contains( &cc_ang.anc_c )) {
+                    return;
+                 }
+
             let mut angle_deg = cc_ang.target_angle.to_degrees();
+            ui.add(egui::Separator::default());
             ui.label( "Fixed Angle:" );
             if ui
                 .add(egui::Slider::new(

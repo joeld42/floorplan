@@ -3,6 +3,8 @@ use bevy_vello::{ prelude::* };
 
 use constraints::{ Constraint, PinMode };
 
+use vello::peniko::Color;
+
 use super::floorplan::{Floorplan, WallStyle};
 use super::interaction::{InteractionMode, InteractionState};
 
@@ -30,7 +32,6 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
 
     let (mut _transform, mut scene) = query_scene.single_mut();
 
-
     // Reset scene every frame
     *scene = VelloScene::default();
 
@@ -38,9 +39,14 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
         return;
     }
 
+    let c_walls = Color::rgba8( 109, 123, 166, 255 );
+    let c_constraint = Color::rgba8(188, 175, 171, 255 );
+    let c_select =Color::rgba8( 252, 194, 225, 255 );
+    let c_ghost = Color::rgba8( 76, 73, 166, 255);
+
     // If align mode (holding shift), draw the align line
     if state.do_align_cursor {
-        let stroke = kurbo::Stroke::new(0.5).with_dashes( 0.0, [ 1.0, 4.0 ]);
+        let stroke = kurbo::Stroke::new(1.0).with_dashes( 0.0, [ 1.0, 4.0 ]);
         let cursor_diff = (state.world_cursor - state.world_cursor_align).abs();
         let align_p = state.world_cursor_align.diagp();
         let align_guide = if cursor_diff.x > cursor_diff.y {
@@ -50,12 +56,12 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
             kurbo::Line::new(  kurbo::Point::new( align_p.x, align_p.y - 1000.0 ),
                                 kurbo::Point::new( align_p.x, align_p.y + 1000.0 ) )
         };
-        scene.stroke(&stroke, kurbo::Affine::IDENTITY, peniko::Color::WHITE, None, &align_guide);
+        scene.stroke(&stroke, kurbo::Affine::IDENTITY, c_ghost, None, &align_guide);
     }
 
     // draw walls
-    let stroke_int = kurbo::Stroke::new(2.0);
-    let stroke_ext = kurbo::Stroke::new(6.0);
+    let stroke_pin = kurbo::Stroke::new(2.0);
+    let stroke_ext = kurbo::Stroke::new(5.0);
     for (ndx, wall) in floorplan.walls.iter().enumerate() {
 
         let anc_a = floorplan.csys.anchors[ wall.anchor_a ];
@@ -63,19 +69,18 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
         let line = kurbo::Line::new( anc_a.p.diagp(), anc_b.p.diagp() );
 
         // match wall.style to pick stroke_int or stroke_ext
-        let stroke = match wall.style {
-            WallStyle::Interior => &stroke_int,
-            WallStyle::Exterior => &stroke_ext,
-        };
+        // let stroke = match wall.style {
+        //     WallStyle::Interior => &stroke_int,
+        //     WallStyle::Exterior => &stroke_ext,
+        // };
 
-        //let line_stroke_color = peniko::Color::new([0.5373, 0.7059, 0.9804, 1.]);
         let wall_col = if state.selected_walls.contains( &ndx ) {
-            peniko::Color::LIME_GREEN
+            c_select
         } else {
-            peniko::Color::WHITE
+            c_walls
         };
 
-        scene.stroke(&stroke, kurbo::Affine::IDENTITY, wall_col, None, &line);
+        scene.stroke(&stroke_ext, kurbo::Affine::IDENTITY, wall_col, None, &line);
     }
 
 
@@ -88,9 +93,9 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
         };
 
         let acolor = if state.selected_anchors.contains( &ndx ) {
-            peniko::Color::LIGHT_GREEN
+            c_select
         } else {
-            peniko::Color::GOLDENROD
+            c_walls
         };
 
         // Draw crosshairs for pinned anchors
@@ -100,7 +105,7 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
                 (anc.p - pin_offs_x).diagp(),
                 (anc.p + pin_offs_x).diagp() );
 
-            scene.stroke(&stroke_int, kurbo::Affine::IDENTITY, acolor, None, &line);
+            scene.stroke(&stroke_pin, kurbo::Affine::IDENTITY, acolor, None, &line);
         }
 
         if anc.pin == PinMode::PinX || anc.pin == PinMode::PinXY {
@@ -109,7 +114,7 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
                 (anc.p - pin_offs_y).diagp(),
                 (anc.p + pin_offs_y).diagp() );
 
-            scene.stroke(&stroke_int, kurbo::Affine::IDENTITY, acolor, None, &line);
+            scene.stroke(&stroke_pin, kurbo::Affine::IDENTITY, acolor, None, &line);
         }
 
         scene.fill(
@@ -122,7 +127,8 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
     }
 
     // Draw constraints
-    let stroke_cons = kurbo::Stroke::new(2.0);
+    let stroke_cons = kurbo::Stroke::new(2.5);
+    let stroke_cons_dashed = kurbo::Stroke::new(2.0).with_dashes( 0.0, [ 2.0, 5.0 ]);
     for cons in floorplan.csys.constraints.iter() {
 
         match cons {
@@ -136,18 +142,27 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
 
                         let line = kurbo::Line::new( pa.diagp(), pb.diagp() );
                         scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
-                            peniko::Color::RED, None, &line);
+                            c_constraint, None, &line);
 
                     }
                     None => {
                         let line = kurbo::Line::new( pa.diagp(), pb.diagp() );
-                        scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
-                            peniko::Color::CORAL, None, &line);
+                        scene.stroke(&stroke_cons_dashed, kurbo::Affine::IDENTITY,
+                            c_constraint, None, &line);
                     }
                 }
             }
 
-            Constraint::Parallel( _parallel ) => {
+            Constraint::Parallel( parallel ) => {
+
+                let pa = floorplan.csys.anchors[ parallel.anc_a ].p;
+                let pb = floorplan.csys.anchors[ parallel.anc_b ].p;
+                let pc = floorplan.csys.anchors[ parallel.anc_c ].p;
+                let pd = floorplan.csys.anchors[ parallel.anc_d ].p;
+
+                draw_constraint_parr( &mut scene, stroke_cons.clone(), c_constraint, pa, pb );
+                draw_constraint_parr( &mut scene, stroke_cons.clone(), c_constraint, pc, pd );
+
             }
 
             Constraint::Angle( angle ) => {
@@ -162,11 +177,11 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
                 let p2 = pb + ba + bc;
                 let line = kurbo::Line::new( (pb + ba).diagp(), p2.diagp() );
                 scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
-                            peniko::Color::RED, None, &line);
+                            c_constraint, None, &line);
 
                 let line = kurbo::Line::new( (pb + bc).diagp(), p2.diagp() );
                 scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
-                            peniko::Color::RED, None, &line);
+                    c_constraint, None, &line);
 
             }
         }
@@ -189,36 +204,23 @@ pub fn render_diagram(mut query_scene: Query<(&mut Transform, &mut VelloScene)>,
 
         let line = kurbo::Line::new( start_pos.diagp(), end_pos.diagp() );
             scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
-                        peniko::Color::CYAN, None, &line);
+                        c_ghost, None, &line);
     }
+}
 
-    /*
-    // Animate color green to blue
-    let c = Vec3::lerp(
-        Vec3::new(-1.0, 1.0, -1.0),
-        Vec3::new(-1.0, 1.0, 1.0),
-        sin_time + 0.5,
-    );
+fn draw_constraint_parr( scene : &mut VelloScene, stroke_cons : kurbo::Stroke, brush : peniko::Color, pa : Vec2, pb : Vec2 )
+{
+    let ctr = (pa + pb) * 0.5;
+    let ab = (pb -pa).normalize();
+    let perp = Vec2::new( ab.y, -ab.x ) * 5.0;
 
-    // Animate the corner radius
-    scene.fill(
-        peniko::Fill::NonZero,
-        kurbo::Affine::default(),
-        peniko::Color::rgb(c.x as f64, c.y as f64, c.z as f64),
-        None,
-        &kurbo::RoundedRect::new(-50.0, -50.0, 50.0, 50.0, (sin_time as f64) * 50.0),
-    );
+    let ab = ab * 5.0;
 
-    scene.fill(
-        peniko::Fill::NonZero,
-        kurbo::Affine::default(),
-        peniko::Color::rgb(1.0, 1.0, 0.2 ),
-        None,
-        &kurbo::RoundedRect::new(-20.0, -20.0, 20.0, 20.0, (sin_time as f64) * 20.0),
-    );
-    */
+    let line = kurbo::Line::new( (ctr + ab + perp).diagp(), (ctr - ab + perp).diagp() );
+    scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
+        brush, None, &line);
 
-    // transform.scale = Vec3::lerp(Vec3::ONE * 0.5, Vec3::ONE * 1.0, sin_time);
-    // transform.translation = Vec3::lerp(Vec3::X * -100.0, Vec3::X * 100.0, sin_time);
-    // transform.rotation = Quat::from_rotation_z(-std::f32::consts::TAU * sin_time);
+        let line = kurbo::Line::new( (ctr + ab - perp).diagp(), (ctr - ab - perp).diagp() );
+        scene.stroke(&stroke_cons, kurbo::Affine::IDENTITY,
+            brush, None, &line);
 }
